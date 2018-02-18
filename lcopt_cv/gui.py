@@ -8,8 +8,8 @@ import numpy as np
 import cv2
 import os
 
-from grab_flow_chart import *
-from heuristics import *
+from .grab_flow_chart import *
+from .heuristics import *
 
 
 def resize_to_square(image, side_length):
