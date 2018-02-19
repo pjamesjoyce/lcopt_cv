@@ -7,9 +7,125 @@ import numpy as np
 #import tkFileDialog
 import cv2
 import os
+from functools import partial
 
 from .grab_flow_chart import *
 from .heuristics import *
+
+DEFAULT_CONTROLS = [
+            {'name': 'threshLevel',
+             'type': 'scale',
+             'label': 'Threshold level',
+             'data': {
+                'value': 115,
+                'min': 0,
+                'max': 255,
+                'step': 1
+             }
+            },
+            {'name': 'boxDilationIterations',
+             'type': 'scale',
+             'label': 'Number of box dilation iterations',
+             'data': {
+                'value': 1,
+                'min': 0,
+                'max': 10,
+                'step': 1
+             }
+            },
+            {'name': 'boxApproxParameter',
+             'type': 'scale',
+             'label': 'Box approximation parameter',
+             'data': {
+                'value': 0.02,
+                'min': 0,
+                'max': 0.5,
+                'step': 0.01
+             }
+            },
+            {'name': 'sizeThreshold',
+             'type': 'scale',
+             'label': 'Size threshold',
+             'data': {
+                'value': 0.2,
+                'min': 0,
+                'max': 1,
+                'step': 0.01
+             }
+            },
+            {'name': 'duplicateThreshold',
+             'type': 'scale',
+             'label': 'Threshold for duplicate boxes (euclidian distance)',
+             'data': {
+                'value': 10,
+                'min': 0,
+                'max': 200,
+                'step': 1
+             }
+            },
+            {'name': 'lineDilateIterations',
+             'type': 'scale',
+             'label': 'Number of line dilation iterations',
+             'data': {
+                'value': 3,
+                'min': 0,
+                'max': 10,
+                'step': 1
+             }
+            },
+            {'name': 'maskThickness',
+             'type': 'scale',
+             'label': 'line thickness for box mask',
+             'data': {
+                'value': 8,
+                'min': 0,
+                'max': 20,
+                'step': 1
+             }
+            },
+            {'name': 'equalizeBackground',
+             'type': 'checkbox',
+             'label': 'Equalise background',
+             'data': {
+                'value': True,
+             }
+            },
+            {'name': 'skipClosing',
+             'type': 'checkbox',
+             'label': 'Skip closing step (for incomplete boxes)',
+             'data': {
+                'value': False,
+             }
+            },
+            {'name': 'unstack',
+             'type': 'checkbox',
+             'label': 'Unstack spurious links',
+             'data': {
+                'value': False,
+             }
+            },
+            {'name': 'directional',
+             'type': 'checkbox',
+             'label': 'Use directional heuristic',
+             'data': {
+                'value': True,
+             }
+            },
+            {'name': 'prefer_linked',
+             'type': 'checkbox',
+             'label': 'Use prefer linked heuristic',
+             'data': {
+                'value': False,
+             }
+            },
+            {'name': 'skipDilation',
+             'type': 'checkbox',
+             'label': 'Skip dilation step for boxes',
+             'data': {
+                'value': False,
+             }
+            },
+            ]
 
 
 def resize_to_square(image, side_length):
@@ -23,12 +139,26 @@ def resize_to_square(image, side_length):
     
     return temp_image
 
+
+def convert_to_tkinter_image(image, size):
+    try:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    except cv2.error:
+        pass
+
+    image = Image.fromarray(image)
+    image = resize_to_square(image, size)
+    image = ImageTk.PhotoImage(image)
+
+    return image
+
+
 class ImageGui:
 
-    def __init__(self):
+    def __init__(self, controls=DEFAULT_CONTROLS):
 
-        self.sm_Image = 245 #230
-        self.lg_Image = 800 #750
+        self.sm_Image = 245  # 230
+        self.lg_Image = 800  # 750
 
         this_path = os.path.dirname(os.path.realpath(__file__))
         assets = os.path.join(this_path, "assets")
@@ -41,50 +171,7 @@ class ImageGui:
         self.IMAGEPATH = None
         self.IMAGEPROCESSOR_OBJECT = None
 
-        self.defaults = {
-            'threshLevel': 115,
-            'boxApproxParameter': 0.02,
-            'sizeThreshold': 0.2,
-            'lineDilateIterations': 3,
-            'equalizeBackground': True,
-            'skipClosing': False,
-            'maskThickness': 8,
-            'unstack': False,
-            'directional': False,
-            'prefer_linked': False,
-            'boxDilationIterations': 1,
-            'skipDilation': False,
-            'duplicateThreshold': 10
-        }
-
-        self.threshLevel = self.defaults['threshLevel']
-        self.boxApproxParameter = self.defaults['boxApproxParameter']
-        self.sizeThreshold = self.defaults['sizeThreshold']
-        self.lineDilateIterations = self.defaults['lineDilateIterations']
-
-        self.equalizeBackground = self.defaults['equalizeBackground']
-        self.equalizeBackgroundVar = BooleanVar()
-        
-        self.skipClosing = self.defaults['skipClosing']
-        self.skipClosingVar = BooleanVar()
-        
-        self.maskThickness = self.defaults['maskThickness']
-
-        self.unstack = self.defaults['unstack']
-        self.unstackVar = BooleanVar()
-
-        self.directional = self.defaults['directional']
-        self.directionalVar = BooleanVar()
-
-        self.prefer_linked = self.defaults['prefer_linked']
-        self.prefer_linkedVar = BooleanVar()
-
-        self.boxDilationIterations = self.defaults['boxDilationIterations']
-
-        self.skipDilation = self.defaults['skipDilation']
-        self.skipDilationVar = BooleanVar()
-
-        self.duplicateThreshold = self.defaults['duplicateThreshold']
+        self.controls = controls
 
         blank = np.full((self.lg_Image, self.lg_Image), 240, dtype=np.uint8)
         blank = Image.fromarray(blank)
@@ -103,136 +190,76 @@ class ImageGui:
         self.right_frame = Frame(self.root, width=250, height=750)
         self.right_frame.pack(side="left")
 
-        Label(self.left_frame, text="Original image").grid(column=0, row=0, sticky=(N))
-        self.panelA1 = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
-        self.panelA1.image = blank_sm
-        self.panelA1.grid(column=0, row=1, sticky=(N, W), padx=10)
+        # set up image panels
 
-        Label(self.left_frame, text="Thresholded image").grid(column=1, row=0, sticky=(N))
-        self.panelA2 = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
-        self.panelA2.image = blank_sm
-        self.panelA2.grid(column=1, row=1, sticky=(N, E), padx=10)
+        self.panelNames = [
+            "Original image", 
+            "Thresholded image", 
+            "Dilated/Closed image", 
+            "Contours found (boxes in blue)", 
+            "Boxes kept",
+            "Lines"
+            ]
 
-        Label(self.left_frame, text="Dilated/Closed image").grid(column=0, row=2, sticky=(N))
-        self.panelA3 = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
-        self.panelA3.image = blank_sm
-        self.panelA3.grid(column=0, row=3, sticky=(W), padx=10)
+        self.panels = []
 
-        Label(self.left_frame, text="Contours found (boxes in blue)").grid(column=1, row=2, sticky=(N))
-        self.panelA4 = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
-        self.panelA4.image = blank_sm
-        self.panelA4.grid(column=1, row=3, sticky=(E), padx=10)
-
-        Label(self.left_frame, text="Boxes kept").grid(column=0, row=4, sticky=(N))
-        self.panelA5 = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
-        self.panelA5.image = blank_sm
-        self.panelA5.grid(column=0, row=5, sticky=(S, W), padx=10)
-
-        Label(self.left_frame, text="Lines").grid(column=1, row=4, sticky=(N))
-        self.panelA6 = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
-        self.panelA6.image = blank_sm
-        self.panelA6.grid(column=1, row=5, sticky=(S, E), padx=10)
+        for n, p in enumerate(self.panelNames):
+            row = n - (n % 2)
+            column = n % 2
+            Label(self.left_frame, text=p).grid(column=column, row=row)
+            panel = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
+            panel.image=blank_sm
+            panel.grid(column=column, row=row+1, padx=10)
+            self.panels.append(panel)
 
         Label(self.middle_frame, text="Result").pack()
         self.panelB = Label(self.middle_frame, image=blank_lg, width=self.lg_Image,  relief="groove")
         self.panelB.image = blank_lg
         self.panelB.pack(side="left", padx=10)
 
+        # set up controls
+
         btn = Button(self.right_frame, text="Select an image", command=self.select_image)
-        btn.pack(side="top", fill="both", expand="yes", padx="10", pady="10")
+        btn.pack(side="top", fill="both", expand="yes", padx="10")
 
         self.reset_btn = Button(self.right_frame, text="Reset defaults", command=self.reset_defaults, state=DISABLED)
-        self.reset_btn.pack(side="top", fill="both", expand="yes", padx="10", pady="10")
+        self.reset_btn.pack(side="top", fill="both", expand="yes", padx="10")
 
-        threshLabel = Label(self.right_frame, text="Threshold level")
-        threshLabel.pack()
-        self.threshSlider = Scale(self.right_frame, from_=0, to=255, orient=HORIZONTAL, tickinterval=255, length=250, command=self.threshChange, state=DISABLED)
-        self.threshSlider.set(self.threshLevel)
-        self.threshSlider.pack()
+        for control in self.controls:
+            setattr(self, control['name'], control['data']['value'])
+            
+            if control['type'] == 'checkbox':
+                setattr(self, '{}Var'.format(control['name']), BooleanVar())
 
-        boxDilationIterationsLabel = Label(self.right_frame, text="Box dilation iterations")
-        boxDilationIterationsLabel.pack()
-        self.boxDilationIterationsSlider = Scale(self.right_frame, from_=0, to=10, orient=HORIZONTAL, tickinterval=10, length=250, command=self.boxDilationIterationsChange, state=DISABLED)
-        self.boxDilationIterationsSlider.set(self.boxDilationIterations)
-        self.boxDilationIterationsSlider.pack()
+                controlName = '{}Check'.format(control['name'])
+                variableName = '{}Var'.format(control['name'])
 
-        boxapproxLabel = Label(self.right_frame, text="Box finder sensitivity level")
-        boxapproxLabel.pack()
-        self.boxapproxSlider = Scale(self.right_frame, from_=0, to=0.2, orient=HORIZONTAL, tickinterval=0.2, length=250, command=self.boxapproxChange, resolution=0.01, state=DISABLED)
-        self.boxapproxSlider.set(self.boxApproxParameter)
-        self.boxapproxSlider.pack()
+                setattr(self, controlName, Checkbutton(
+                    self.right_frame, text=control['label'], variable=getattr(self, variableName),
+                    onvalue=True, offvalue=False, command=partial(self.eventHandler, control['name'], variableName), state=DISABLED
+                ))
 
-        sizeThresholdLabel = Label(self.right_frame, text="Box size exclusion threshold")
-        sizeThresholdLabel.pack()
-        self.sizeThresholdSlider = Scale(self.right_frame, from_=0, to=1, orient=HORIZONTAL, tickinterval=1, length=250, command=self.sizeThresholdChange, resolution=0.01, state=DISABLED)
-        self.sizeThresholdSlider.set(self.sizeThreshold)
-        self.sizeThresholdSlider.pack()
+                if getattr(self, control['name']):
+                    getattr(self, controlName).select()
 
-        duplicateThresholdLabel = Label(self.right_frame, text="Threshold for duplicate boxes")
-        duplicateThresholdLabel.pack()
-        self.duplicateThresholdSlider = Scale(self.right_frame, from_=0, to=100, orient=HORIZONTAL, tickinterval=100, length=250, command=self.duplicateThresholdChange, resolution=1, state=DISABLED)
-        self.duplicateThresholdSlider.set(self.duplicateThreshold)
-        self.duplicateThresholdSlider.pack()        
+                getattr(self, controlName).pack(anchor='w')
 
-        lineDilateIterationsLabel = Label(self.right_frame, text="Line dilation iterations")
-        lineDilateIterationsLabel.pack()
-        self.lineDilateIterationsSlider = Scale(self.right_frame, from_=0, to=10, orient=HORIZONTAL, tickinterval=10, length=250, command=self.lineDilateIterationsChange, resolution=1, state=DISABLED)
-        self.lineDilateIterationsSlider.set(self.lineDilateIterations)
-        self.lineDilateIterationsSlider.pack()
-
-        maskThicknessLabel = Label(self.right_frame, text="Thickness of box border in mask")
-        maskThicknessLabel.pack()
-        self.maskThicknessSlider = Scale(self.right_frame, from_=0, to=20, orient=HORIZONTAL, tickinterval=20, length=250, command=self.maskThicknessChange, resolution=1, state=DISABLED)
-        self.maskThicknessSlider.set(self.maskThickness)
-        self.maskThicknessSlider.pack()
-
-        self.equalizeBackgroundCheck = Checkbutton(
-            self.right_frame, text="Equalise background before processing", variable=self.equalizeBackgroundVar,
-            onvalue=True, offvalue=False, command=self.equalizeBackgroundChange, state=DISABLED
-        )
-        if self.equalizeBackground:
-            self.equalizeBackgroundCheck.select()
-        self.equalizeBackgroundCheck.pack(anchor='w')
-
-        self.skipClosingCheck = Checkbutton(
-            self.right_frame, text="Skip closing", variable=self.skipClosingVar,
-            onvalue=True, offvalue=False, command=self.skipClosingChange, state=DISABLED
-        )
-        if self.skipClosing:
-            self.skipClosingCheck.select()
-        self.skipClosingCheck.pack(anchor='w')
-
-        self.unstackCheck = Checkbutton(
-            self.right_frame, text="Unstack spurious links", variable=self.unstackVar,
-            onvalue=True, offvalue=False, command=self.unstackChange, state=DISABLED
-        )
-        if self.unstack:
-            self.unstackCheck.select()
-        self.unstackCheck.pack(anchor='w')
-
-        self.directionalCheck = Checkbutton(
-            self.right_frame, text="Use directional heuristic", variable=self.directionalVar,
-            onvalue=True, offvalue=False, command=self.directionalChange, state=DISABLED
-        )
-        if self.directional:
-            self.directionalCheck.select()
-        self.directionalCheck.pack(anchor='w')
-
-        self.prefer_linkedCheck = Checkbutton(
-            self.right_frame, text="Use prefer linked heuristic", variable=self.prefer_linkedVar,
-            onvalue=True, offvalue=False, command=self.prefer_linkedChange, state=DISABLED
-        )
-        if self.prefer_linked:
-            self.prefer_linkedCheck.select()
-        self.prefer_linkedCheck.pack(anchor='w')
+            elif control['type'] == 'scale':
+                Label(self.right_frame, text=control['label']).pack()
+                controlName = '{}Slider'.format(control['name'])
+                from_ = control['data']['min']
+                to = control['data']['max']
+                tickinterval = to - from_
+                resolution = control['data']['step']
+                setattr(self, controlName, Scale(self.right_frame, from_=from_, to=to, tickinterval=tickinterval, resolution=resolution, orient=HORIZONTAL, state=DISABLED, length=250, command=partial(self.eventHandler, control['name'], controlName)))
+                getattr(self, controlName).set(control['data']['value'])
+                getattr(self, controlName).pack()
 
         self.rp_btn = Button(self.right_frame, text="Reprocess image", command=self.reprocess_image, state=DISABLED)
-        self.rp_btn.pack(fill="both", expand="yes", padx="10", pady="10")
+        self.rp_btn.pack(fill="both", expand="yes", padx="10")
 
         self.generate_btn = Button(self.right_frame, text="Generate LCA model", command= self.generate_model, state=DISABLED)
-        self.generate_btn.pack(fill="both", expand="yes", padx=10, pady=10)
-
-
+        self.generate_btn.pack(fill="both", expand="yes", padx=10)                
 
     def select_image(self):
 
@@ -278,60 +305,22 @@ class ImageGui:
 
             #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             #edged = cv2.Canny(gray, 50, 100)
-            thresh = ip.intermediates['threshold']
-            dilated = ip.intermediates['closed']
-            contours = ip.intermediates['contours']
-            boxes = ip.intermediates['boxes']
-            lines = ip.intermediates['lines']
-            final = ip.intermediates['final']
+            intermediate_panels = [
+                ip.intermediates['original'],
+                ip.intermediates['threshold'],
+                ip.intermediates['closed'],
+                ip.intermediates['contours'],
+                ip.intermediates['boxes'],
+                ip.intermediates['lines'],
+            ]
 
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            #thresh = cv2.cvtColor(thresh, cv2.COLOR_BGR2RGB)
-            #dilated = cv2.cvtColor(dilated, cv2.COLOR_BGR2RGB)
-            boxes = cv2.cvtColor(boxes, cv2.COLOR_BGR2RGB)
-            contours = cv2.cvtColor(contours, cv2.COLOR_BGR2RGB)
-            final = cv2.cvtColor(final, cv2.COLOR_BGR2RGB)
+            for n, panel in enumerate(intermediate_panels):
+                image = convert_to_tkinter_image(panel, self.sm_Image)
+                self.panels[n].configure(image=image)
+                self.panels[n].image = image
 
-            image = Image.fromarray(image)
-            thresh = Image.fromarray(thresh)
-            dilated = Image.fromarray(dilated)
-            contours = Image.fromarray(contours)
-            boxes = Image.fromarray(boxes)
-            lines = Image.fromarray(lines)
-            final = Image.fromarray(final)
-
-            image = resize_to_square(image, self.sm_Image)
-            thresh = resize_to_square(thresh, self.sm_Image)
-            dilated = resize_to_square(dilated, self.sm_Image)
-            contours = resize_to_square(contours, self.sm_Image)
-            boxes = resize_to_square(boxes, self.sm_Image)
-            lines = resize_to_square(lines, self.sm_Image)
-            final = resize_to_square(final, self.lg_Image)
-
-            image = ImageTk.PhotoImage(image)
-            thresh = ImageTk.PhotoImage(thresh)
-            dilated = ImageTk.PhotoImage(dilated)
-            contours = ImageTk.PhotoImage(contours)
-            boxes = ImageTk.PhotoImage(boxes)
-            lines = ImageTk.PhotoImage(lines)
-            final = ImageTk.PhotoImage(final)
-            
-            self.panelA1.configure(image=image)
-            self.panelA2.configure(image=thresh)
-            self.panelA3.configure(image=dilated)
-            self.panelA4.configure(image=contours)
-            self.panelA5.configure(image=boxes)
-            self.panelA6.configure(image=lines)
-            
+            final = convert_to_tkinter_image(ip.intermediates['final'], self.lg_Image)
             self.panelB.configure(image=final)
-
-            self.panelA1.image = image
-            self.panelA2.image = thresh
-            self.panelA3.image = dilated
-            self.panelA4.image = contours
-            self.panelA5.image = boxes
-            self.panelA6.image = lines
-            
             self.panelB.image = final
 
             if len(ip.links) > 0:
@@ -339,115 +328,37 @@ class ImageGui:
             else:
                 self.generate_btn.config(state="disabled")
 
-    def threshChange(self, event):
-        self.threshLevel = self.threshSlider.get()
+    def eventHandler(self, *args):
+        print(args)
+        attrName = args[0]
+        controlName = args[1]
 
-    def boxapproxChange(self, event):
-        self.boxApproxParameter = self.boxapproxSlider.get()
-
-    def lineDilateChange(self, event):
-        self.lineDilateIterations = self.dilateSlider.get()
-
-    def sizeThresholdChange(self, event):
-        self.sizeThreshold = self.sizeThresholdSlider.get()
-
-    def lineDilateIterationsChange(self, event):
-        self.lineDilateIterations = self.lineDilateIterationsSlider.get()
-
-    def maskThicknessChange(self, event):
-        self.maskThickness = self.maskThicknessSlider.get()   
-
-    def boxDilationIterationsChange(self, event):
-        self.boxDilationIterations = self.boxDilationIterationsSlider.get()
-
-    def duplicateThresholdChange(self, event):
-        self.duplicateThreshold = self.duplicateThresholdSlider.get()   
-
-    def equalizeBackgroundChange(self):
-        self.equalizeBackground = self.equalizeBackgroundVar.get()
-
-    def skipClosingChange(self):
-        self.skipClosing = self.skipClosingVar.get()
-
-    def unstackChange(self):
-        self.unstack = self.unstackVar.get()
-
-    def directionalChange(self):
-        self.directional = self.directionalVar.get()
-
-    def prefer_linkedChange(self):
-        self.prefer_linked = self.prefer_linkedVar.get()
+        setattr(self, attrName, getattr(self, controlName).get())
 
     def enable_controls(self):
-        self.threshSlider.config(state="normal")
-        self.boxapproxSlider.config(state="normal")
-        self.sizeThresholdSlider.config(state="normal")
-        self.lineDilateIterationsSlider.config(state="normal")
-        self.boxDilationIterationsSlider.config(state="normal")
-        self.duplicateThresholdSlider.config(state="normal")
 
-        self.equalizeBackgroundCheck.config(state="normal")
-        self.skipClosingCheck.config(state="normal")
-        self.maskThicknessSlider.config(state="normal")
-        self.unstackCheck.config(state="normal")
-        self.directionalCheck.config(state="normal")
-        self.prefer_linkedCheck.config(state="normal")
+        for control in self.controls:
+            if control['type'] == 'scale':
+                controlName = '{}Slider'.format(control['name'])
+            elif control['type'] == 'checkbox':
+                controlName = '{}Check'.format(control['name'])
 
-        self.rp_btn.config(state="normal")
-        self.reset_btn.config(state="normal")
+            getattr(self, controlName).config(state="normal")
 
+            self.rp_btn.config(state="normal")
+            self.reset_btn.config(state="normal")
 
     def reset_defaults(self):
-        self.threshLevel = self.defaults['threshLevel']
-        self.threshSlider.set(self.defaults['threshLevel'])
 
-        self.boxApproxParameter = self.defaults['boxApproxParameter']
-        self.boxapproxSlider.set(self.defaults['boxApproxParameter'])
-
-        self.sizeThreshold = self.defaults['sizeThreshold']
-        self.sizeThresholdSlider.set(self.defaults['sizeThreshold'])
-
-        self.lineDilateIterations = self.defaults['lineDilateIterations']
-        self.lineDilateIterationsSlider.set(self.defaults['lineDilateIterations'])
-
-        self.boxDilationIterations = self.defaults['boxDilationIterations']
-        self.boxDilationIterationsSlider.set(self.defaults['boxDilationIterations'])
-
-        self.duplicateThreshold = self.defaults['duplicateThreshold']
-        self.duplicateThresholdSlider.set(self.defaults['duplicateThreshold'])
-
-        self.equalizeBackground = self.defaults['equalizeBackground']
-        if self.defaults['equalizeBackground']:
-            self.equalizeBackgroundCheck.select()
-        else:
-            self.equalizeBackgroundCheck.deselect()
-        
-        self.skipClosing = self.defaults['skipClosing']
-        if self.defaults['skipClosing']:
-            self.skipClosingCheck.select()
-        else:
-            self.skipClosingCheck.deselect()
-        
-        self.maskThickness = self.defaults['maskThickness']
-        self.maskThicknessSlider.set(self.defaults['maskThickness'])
-
-        self.unstack = self.defaults['unstack']
-        if self.defaults['unstack']:
-            self.unstackCheck.select()
-        else:
-            self.unstackCheck.deselect()
-
-        self.directional = self.defaults['directional']
-        if self.defaults['directional']:
-            self.directionalCheck.select()
-        else:
-            self.directionalCheck.deselect()
-
-        self.prefer_linked = self.defaults['prefer_linked']
-        if self.defaults['prefer_linked']:
-            self.prefer_linkedCheck.select()
-        else:
-            self.prefer_linkedCheck.deselect()
+        for control in self.controls:
+            setattr(self, control['name'], control['data']['value'])
+            if control['type'] == 'scale':
+                getattr(self, '{}Slider'.format(control['name'])).set(control['data']['value'])
+            elif control['type'] == 'checkbox':
+                if control['data']['value']:
+                    getattr(self, '{}Check'.format(control['name'])).select()
+                else:
+                    getattr(self, '{}Check'.format(control['name'])).deselect()
 
     def reprocess_image(self):
         self.process_image()
