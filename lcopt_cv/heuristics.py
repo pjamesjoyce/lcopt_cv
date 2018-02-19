@@ -10,7 +10,7 @@ def round_down(num, divisor):
 
 
 def nodes_as_dict(ip):
-    return [{'index': n, 'x1': x, 'x2': x + w, 'y1': y, 'y2': y + h} for n, (x, y, w, h) in enumerate(ip.nodes)]
+    return [{'index': n, 'x1': x, 'x2': x + w, 'y1': y, 'y2': y + h} for n, (x, y, w, h) in enumerate(ip.box_coords)]
 
 
 def get_stacks(node_dict, links):
@@ -51,7 +51,7 @@ def unstack(ip, stacks, maskThickness = 8):
         stack_mask[stack['t']:stack['b'], stack['l']:stack['r']] = 255
         temp_mask = cv2.bitwise_and(img, img, mask = stack_mask)
 
-        nodes = ip.nodes
+        nodes = ip.box_coords
 
         linked_processes = {}
 
@@ -114,9 +114,9 @@ def directional_links(links, roundTolerance=20):
         
         #print(x1, x2, y1, y2)
         
-        if x1 < x2:
+        if x1 > x2:
             directed_links[(l[1], l[0])] = [c[1], c[0]]
-        elif x1 == x2 and y1 < y2:
+        elif x1 == x2 and y1 > y2:
                 directed_links[(l[1], l[0])] = [c[1], c[0]]
         else:
             directed_links[l] = c
@@ -143,7 +143,7 @@ def prefer_linked(links):
 
     for l, c in links.items():
         
-        if node_instances[l[0]] < node_instances[l[1]]:
+        if node_instances[l[0]] > 1 and node_instances[l[1]] == 1:
             pl_links[(l[1], l[0])] = [c[1], c[0]]
         else:
             pl_links[l] = c

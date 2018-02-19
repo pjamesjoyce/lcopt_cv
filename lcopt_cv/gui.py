@@ -207,13 +207,13 @@ class ImageGui:
             row = n - (n % 2)
             column = n % 2
             Label(self.left_frame, text=p).grid(column=column, row=row)
-            panel = Label(self.left_frame, image = blank_sm, width = self.sm_Image,  relief="groove")
-            panel.image=blank_sm
-            panel.grid(column=column, row=row+1, padx=10)
+            panel = Label(self.left_frame, image=blank_sm, width=self.sm_Image, relief="groove")
+            panel.image = blank_sm
+            panel.grid(column=column, row=row + 1, padx=10)
             self.panels.append(panel)
 
         Label(self.middle_frame, text="Result").pack()
-        self.panelB = Label(self.middle_frame, image=blank_lg, width=self.lg_Image,  relief="groove")
+        self.panelB = Label(self.middle_frame, image=blank_lg, width=self.lg_Image, relief="groove")
         self.panelB.image = blank_lg
         self.panelB.pack(side="left", padx=10)
 

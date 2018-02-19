@@ -104,9 +104,10 @@ class ImageProcessor():
 
         non_duplicate_boxes = [x for n, x in enumerate(bounding_boxes) if n not in duplicate_boxes]
 
-        for b in non_duplicate_boxes:
+        for n, b in enumerate(non_duplicate_boxes):
             (x, y, w, h) = b
             cv2.rectangle(image, (x, y), (x + w, y + h), color=(0, 255, 0), thickness=2)
+            cv2.putText(image, '{}'.format(n), (int(x+5), int(y+h-5)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), thickness=2)
 
         intermediates['boxes'] = image.copy()
 
@@ -179,12 +180,13 @@ class ImageProcessor():
 
             #jitter = [0 for i in range(4)]#[randint(-3,3) for i in range(4)]
             
-            x2 = cs[0][0]  # + jitter[0]
-            y2 = cs[0][1]  # + jitter[1]
-            x1 = cs[1][0]  # + jitter[2]
-            y1 = cs[1][1]  # + jitter[3]
+            x1 = cs[0][0]  # + jitter[0]
+            y1 = cs[0][1]  # + jitter[1]
+            x2 = cs[1][0]  # + jitter[2]
+            y2 = cs[1][1]  # + jitter[3]
             
             cv2.arrowedLine(image, (x1, y1), (x2, y2), (0,0,255), thickness=2)
+            cv2.putText(image, '{}'.format(lp), (int((x1+x2)/2), int((y1+y2)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), thickness=2)
 
         box_images = [keep[y:y+h, x:x+w] for (x, y, w, h) in non_duplicate_boxes]
 
@@ -192,12 +194,23 @@ class ImageProcessor():
         #cv2.waitKey(1500)
         #cv2.destroyAllWindows()
 
+        nodes = OrderedDict()
+        for n, b in enumerate(non_duplicate_boxes):
+            nodes[n] = {
+                'index': n,
+                'name': 'Box {}'.format(n),
+                'coords': b,
+                'image': box_images[n],
+                'type': 'intermediate'
+            }
+
         intermediates['final'] = image
         
         self.box_images = box_images
         self.image = image
         self.links = linked_processes
-        self.nodes = non_duplicate_boxes
+        self.box_coords = non_duplicate_boxes
+        self.nodes = nodes
         self.intermediates =  intermediates
 
         return None
@@ -229,12 +242,13 @@ class ImageProcessor():
 
             #jitter = [0 for i in range(4)]  # [randint(-3,3) for i in range(4)]
             
-            x2 = cs[0][0]  # + jitter[0]
-            y2 = cs[0][1]  # + jitter[1]
-            x1 = cs[1][0]  # + jitter[2]
-            y1 = cs[1][1]  # + jitter[3]
+            x1 = cs[0][0]  # + jitter[0]
+            y1 = cs[0][1]  # + jitter[1]
+            x2 = cs[1][0]  # + jitter[2]
+            y2 = cs[1][1]  # + jitter[3]
             
             cv2.arrowedLine(image, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
+            cv2.putText(image, '{}'.format(lp), (int((x1+x2)/2), int((y1+y2)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), thickness=2)
 
         self.intermediates['final'] = image
 
