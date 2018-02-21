@@ -15,11 +15,19 @@ class LcoptWriter:
 
     def __init__(self, ip, modelname='model', launch=False):
 
+        """
+        # this needs to be transferred to the gui
         senders = [k[0] for k in ip.links.keys()]
         receivers = [k[1] for k in ip.links.keys()]
 
         inputs = [n for n in ip.nodes.keys() if n in senders and n not in receivers]
         intermediates = [n for n in ip.nodes.keys() if n not in inputs]
+        """
+
+        inputs = [k for k, v in ip.nodes.items() if v['type'] == 'input']
+        intermediates = [k for k, v in ip.nodes.items() if v['type'] == 'intermediate']
+        biosphere = [k for k, v in ip.nodes.items() if v['type'] == 'biosphere']
+
 
         model = LcoptModel(modelname)
 
@@ -30,11 +38,11 @@ class LcoptWriter:
             things_to_link = [x[0] for x in ip.links.keys() if x[1] == i]
             
             for l in things_to_link:
-                if l in inputs:
-                    this_exchange = {'name': ip.nodes[l]['name'], 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': 'input'}
+                if l in inputs or l in biosphere:
+                    this_exchange = {'name': ip.nodes[l]['name'], 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': ip.nodes[l]['type']}
                     my_exchanges.append(this_exchange)
                 else:
-                    this_exchange = {'name': "Output of {}".format(ip.nodes[l]['name']), 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': 'intermediate'}
+                    this_exchange = {'name': "Output of {}".format(ip.nodes[l]['name']), 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': ip.nodes[l]['type']}
                     my_exchanges.append(this_exchange)
                     
             model.create_process(process_name, my_exchanges)

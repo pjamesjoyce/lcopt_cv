@@ -12,6 +12,7 @@ from collections import OrderedDict
 
 from .grab_flow_chart import *
 from .heuristics import *
+from .send_to_lcopt import LcoptWriter
 
 DEFAULT_CONTROLS = [
             {'name': 'threshLevel',
@@ -189,7 +190,7 @@ class ImageGui:
         self.middle_frame.pack(side="left")
 
         self.right_frame = Frame(self.root, width=250, height=750)
-        self.right_frame.pack(side="left")
+        self.right_frame.pack(side="left", expand=True)
 
         # set up image panels
 
@@ -384,7 +385,7 @@ class LcaWizard(Frame):
 
         self.toplevel = parent
 
-        
+        self.ip = ip
        
 
         self.button_frame = Frame(self, bd=1, relief="raised")
@@ -437,21 +438,41 @@ class LcaWizard(Frame):
 
 
     def next(self):
+        if self.current_step == 0:
+            for k,v in self.steps[0].data.items():
+                self.ip.nodes[k]['name'] = v['nameVar'].get()
+                self.ip.nodes[k]['type'] = v['typeVar'].get()
+
+        self.steps[1].draw()
         self.show_step(self.current_step + 1)
 
     def back(self):
         self.show_step(self.current_step - 1)
 
     def finish(self):
+
+        path, fname = os.path.split(self.ip.imagepath)
+
+        lw = LcoptWriter(self.ip, "{}_model".format(fname), False)
+
         self.toplevel.destroy()
 
 class NodeStep(Frame):
     def __init__(self, parent, ip):
         super().__init__(parent)
 
-        self.config(bg="white")
+        #self.config(bg="white")
 
-        Label(self, text="Hello - from NodeStep").grid(column=0, row=0)
+        # this needs to be transferred to the gui
+        senders = [k[0] for k in ip.links.keys()]
+        receivers = [k[1] for k in ip.links.keys()]
+
+        inputs = [n for n in ip.nodes.keys() if n in senders and n not in receivers]
+        intermediates = [n for n in ip.nodes.keys() if n not in inputs]
+
+        types = ['input', 'intermediate', 'biosphere']
+
+        #Label(self, text="Hello - from NodeStep").grid(column=0, row=0)
 
         self.node_frames = []
         self.data = OrderedDict()
@@ -505,16 +526,28 @@ class NodeStep(Frame):
             self.data[n]={}
 
             Label(control_frame, text="Name:").grid(column=0, row=0)
-            self.data[n]['nameEntry'] = Entry(control_frame)
+            #self.data[n]['name'] = "Box {}".format(n)
+            self.data[n]['nameVar'] = StringVar()
+            #self.data[n]['nameVar'].trace("w", lambda name, index, mode, sv=self.data[n]['nameVar']: self.updateData(n, sv))
+            self.data[n]['nameVar'].set("Box {}".format(n))
+            self.data[n]['nameEntry'] = Entry(control_frame, textvariable=self.data[n]['nameVar'])
             self.data[n]['nameEntry'].grid(column=1, row=0)
 
             Label(control_frame, text="Type:").grid(column=0, row=1)
-            self.data[n]['typeDropDown'] = Entry(control_frame)
+            self.data[n]['typeVar'] = StringVar()
+            
+            if n in inputs:
+                this_type = 'input'
+            else:
+                this_type = 'intermediate'
+
+            self.data[n]['typeVar'].set(this_type)
+            self.data[n]['typeDropDown'] = OptionMenu(control_frame, self.data[n]['typeVar'], *types) #Entry(control_frame, textvariable=self.data[n]['typeVar'], state=DISABLED)
             self.data[n]['typeDropDown'].grid(column=1, row=1)
             
-            Label(control_frame, text="External link:").grid(column=0, row=2)
-            self.data[n]['extLinkEntry'] = Entry(control_frame)
-            self.data[n]['extLinkEntry'].grid(column=1, row=2)
+            #Label(control_frame, text="External link:").grid(column=0, row=2)
+            #self.data[n]['extLinkEntry'] = Entry(control_frame)
+            #self.data[n]['extLinkEntry'].grid(column=1, row=2)
 
 
             control_frame.grid(column=1, row=0)
@@ -527,17 +560,98 @@ class NodeStep(Frame):
         canvas.create_window((0,0), window=scroll_frame, anchor=N+W)
         #canvas.config(scrollregion=canvas.bbox(ALL))
 
-        
-       
-
-
 class LinkStep(Frame):
     def __init__(self, parent, ip):
         super().__init__(parent)
 
-        self.config(bg="red")
+        self.parent = parent
+        self.ip = ip
 
-        Label(self, text="Hello - from LinkStep").pack()
+        #self.config(bg="white")
+    def draw(self):
+        # this needs to be transferred to the gui
+        senders = [k[0] for k in self.ip.links.keys()]
+        receivers = [k[1] for k in self.ip.links.keys()]
+
+        inputs = [n for n in self.ip.nodes.keys() if n in senders and n not in receivers]
+        intermediates = [n for n in self.ip.nodes.keys() if n not in inputs]
+
+        types = ['input', 'intermediate', 'biosphere']
+        type_colors = {
+            'input': (255, 127, 127),
+            'intermediate': (127, 127, 127),
+            'biosphere': (0, 0, 0)
+        }
+
+        #Label(self, text="Hello - from NodeStep").grid(column=0, row=0)
+
+        self.data = OrderedDict()
+
+        self.grid_rowconfigure(0, minsize=750, weight=1)
+        self.grid_columnconfigure(0, minsize=785, weight=1)
+
+        img_size = 650
+
+        scrollsize = img_size * len(self.ip.nodes)
+
+        yscrollbar = Scrollbar(self)
+        yscrollbar.grid(row=0, column=1, sticky=N+S) # pack(side="right", fill="y") 
+
+        canvas = Canvas(self, bd=0, yscrollcommand=yscrollbar.set, scrollregion=(0, 0, 800, scrollsize))
+
+        scroll_frame = Frame(canvas)
+
+        canvas.grid(row=0, column=0, sticky=N+S+E+W)
+        #canvas.pack(side="left", fill="both", expand=True)
+
+        yscrollbar.config(command=canvas.yview)
+
+        #img_size = 150
+
+        w, h = self.ip.image.shape[:2]
+
+        link_image = np.full((w, h, 3), 255, dtype=np.uint8)
+        
+        for n, (k, node) in enumerate(self.ip.nodes.items()):
+            (x, y, w, h) = node['coords']
+            cv2.rectangle(link_image, (x, y), (x + w, y + h), color=type_colors[node['type']], thickness=8)
+            cv2.putText(link_image, '{}'.format(node['name']), (int(x+15), int(y+h-15)), cv2.FONT_HERSHEY_SIMPLEX, 1, type_colors[node['type']], thickness=2)
+
+        for n, (k, link) in enumerate(self.ip.links.items()):
+
+            link_type = self.ip.nodes[k[0]]['type']
+
+            if link_type != 'biosphere':
+                
+                x1 = link[0][0]  
+                y1 = link[0][1]  
+                x2 = link[1][0]  
+                y2 = link[1][1]  
+
+            else:
+
+                x2 = link[0][0]  
+                y2 = link[0][1]  
+                x1 = link[1][0]  
+                y1 = link[1][1]  
+
+            
+            cv2.arrowedLine(link_image, (x1, y1), (x2, y2), type_colors[link_type], thickness=2)
+
+
+        link_image_tk = convert_to_tkinter_image(link_image, img_size)
+
+        show_img = Label(scroll_frame, image=link_image_tk, relief="groove")
+        show_img.image = link_image_tk
+        show_img.grid(column=1, row=0)
+
+
+        #for n, f in enumerate(self.link_frames):
+        #    f.grid(column=0, row=n)
+        
+        canvas.create_window((0,0), window=scroll_frame, anchor=N+W)
+        #canvas.config(scrollregion=canvas.bbox(ALL))
+
 
 if __name__ == "__main__":
 
