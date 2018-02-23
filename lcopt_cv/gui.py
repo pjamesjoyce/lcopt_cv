@@ -1,5 +1,5 @@
 from tkinter import *
-from tkinter import filedialog, simpledialog, messagebox
+from tkinter import ttk, filedialog
 from PIL import Image
 from PIL import ImageTk
 import imutils
@@ -9,6 +9,7 @@ import cv2
 import os
 from functools import partial
 from collections import OrderedDict
+import json
 
 from .grab_flow_chart import *
 from .heuristics import *
@@ -460,6 +461,12 @@ class LcaWizard(Frame):
 
         self.ip = ip
 
+        path, fname = os.path.split(self.ip.imagepath)
+
+        self.lw = LcoptWriter(self.ip, "{}_model".format(fname), False)
+
+        self.ip.model = self.lw.get_model()
+
         self.root = root
 
         self.button_frame = Frame(self, bd=1, relief="raised")
@@ -512,6 +519,10 @@ class LcaWizard(Frame):
 
 
     def next(self):
+
+        print(self.ip.model.database['name'])
+        print([d['name'] for d in self.ip.model.external_databases])
+
         if self.current_step == 0:
 
             senders = [v['link'][0] for k, v in self.ip.links.items()]
@@ -519,7 +530,11 @@ class LcaWizard(Frame):
 
             for k,v in self.steps[0].data.items():
                 self.ip.nodes[k]['name'] = v['nameVar'].get()
-                self.ip.nodes[k]['type'] = v['typeVar'].get()
+                this_type = v['typeVar'].get()
+                self.ip.nodes[k]['type'] = this_type
+
+                if this_type in ['input', 'biosphere']:
+                    self.ip.nodes[k]['ext_link'] = (v['extLinkDBVar'].get(), v['extLinkCodeVar'].get())
 
                 if self.ip.nodes[k]['type'] == 'input' or self.ip.nodes[k]['type'] == 'biosphere':
 
@@ -548,11 +563,9 @@ class LcaWizard(Frame):
 
     def finish(self):
 
-        path, fname = os.path.split(self.ip.imagepath)
+        self.lw.create()
 
-        lw = LcoptWriter(self.ip, "{}_model".format(fname), False)
-
-        self.ip.model = lw.get_model()
+        self.ip.model = self.lw.get_model()
 
         self.toplevel.destroy()
 
@@ -561,6 +574,8 @@ class LcaWizard(Frame):
 class NodeStep(Frame):
     def __init__(self, parent, ip, w, h):
         super().__init__(parent)
+
+        self.ip = ip
 
         #self.config(bg="white")
 
@@ -650,14 +665,27 @@ class NodeStep(Frame):
 
             self.data[n]['typeVar'].set(this_type)
             if len(associated_links) > 1:
-                self.data[n]['typeDropDown'] = OptionMenu(control_frame, self.data[n]['typeVar'], 'intermediate') 
+                self.data[n]['typeDropDown'] = ttk.Combobox(control_frame, textvariable=self.data[n]['typeVar'], values=['intermediate'])  # OptionMenu(control_frame, self.data[n]['typeVar'], 'intermediate')#, state=DISABLED) 
             else:
-                self.data[n]['typeDropDown'] = OptionMenu(control_frame, self.data[n]['typeVar'], *types) 
+                self.data[n]['typeDropDown'] = ttk.Combobox(control_frame, textvariable=self.data[n]['typeVar'], values=types)  #OptionMenu(control_frame, self.data[n]['typeVar'], *(types), command=partial(self.changeType, n)) 
+                self.data[n]['typeDropDown'].bind("<<ComboboxSelected>>", partial(self.changeType, n))
+                #self.data[n]['typeDropDown'].config(command=partial(self.changeType, n))
             self.data[n]['typeDropDown'].grid(column=1, row=1)
             
-            #Label(control_frame, text="External link:").grid(column=0, row=2)
-            #self.data[n]['extLinkEntry'] = Entry(control_frame)
-            #self.data[n]['extLinkEntry'].grid(column=1, row=2)
+            search_frame = Frame(control_frame)
+            Label(search_frame, text="External link:").grid(column=0, row=0)
+            self.data[n]['extLinkVar'] = StringVar()
+            self.data[n]['extLinkCodeVar'] = StringVar()
+            self.data[n]['extLinkDBVar'] = StringVar()
+            self.data[n]['extLinkEntry'] = Entry(search_frame, state=DISABLED, textvariable=self.data[n]['extLinkVar'])
+            self.data[n]['extLinkEntry'].grid(column=1, row=0)
+            self.data[n]['extLinkbtn'] = Button(search_frame, text='Select', command= partial(self.searchExternal, n))
+            
+            if this_type == "intermediate":
+                self.data[n]['extLinkbtn'].config(state=DISABLED)
+
+            self.data[n]['extLinkbtn'].grid(column=2, row=0)
+            search_frame.grid(column=0, row=2, columnspan=2)
 
 
             control_frame.grid(column=1, row=0)
@@ -669,6 +697,38 @@ class NodeStep(Frame):
         
         canvas.create_window((0,0), window=scroll_frame, anchor=N+W)
         #canvas.config(scrollregion=canvas.bbox(ALL))
+
+    def changeType(self, *args):
+        #print(args)
+        this_id = args[0]
+        #this_type = args[1]
+        #print(this_id, this_type)
+        this_type = self.data[this_id]['typeVar'].get()
+        print(this_id, this_type)
+        if this_type in ['input', 'biosphere']:
+            self.data[this_id]['extLinkbtn'].config(state=NORMAL)
+        else:
+            self.data[this_id]['extLinkbtn'].config(state=DISABLED)
+            self.data[this_id]['extLinkVar'].set('')
+
+
+    def searchExternal(self, this_id):
+        this_type = self.data[this_id]['typeVar'].get()
+        
+        ext_databases = [x['name'] for x in self.ip.model.external_databases]
+
+        if this_type == 'input':
+            to_search = [x for x in ext_databases if x in self.ip.model.technosphere_databases]
+        else:
+            to_search = [x for x in ext_databases if x in self.ip.model.biosphere_databases]
+
+        print(this_id, this_type)
+        print(to_search)
+
+        searcher = DataSearcher(self, self.ip.model, to_search, this_type, self.data[this_id]['extLinkVar'], self.data[this_id]['extLinkCodeVar'], self.data[this_id]['extLinkDBVar'])
+
+        searcher.show()
+
 
 class LinkStep(Frame):
     def __init__(self, parent, ip, w, h):
@@ -845,6 +905,126 @@ class LinkStep(Frame):
         self.ip.links[link]['centroids'] = new_line
 
         self.draw()
+
+
+class DataSearcher(Toplevel):
+
+    def __init__(self, parent, model, to_search, this_type, nameVar, codeVar, dbVar):
+        super().__init__(parent)
+        self.model = model
+        self.parent = parent
+        self.to_search = to_search
+        self.this_type = this_type
+        self.w = 400
+        self.h = 400
+        self.title('Search for external data in {} database'.format(to_search[0]))
+        self.geometry("%dx%d%+d%+d" % (self.w, self.h, 50, 50))
+
+        self.nameVar = nameVar
+        self.codeVar = codeVar
+        self.dbVar = dbVar
+
+
+    def show(self):
+        Label(self, text="Look for something").pack()
+        
+        location_path = os.path.join(assets, 'locations.json')
+
+        with open(location_path, 'r', encoding='utf-8') as f:
+            locations = json.load(f)
+
+        all_items = [x['items'] for x in self.model.external_databases if x['name'] in self.model.technosphere_databases]
+
+        used_locations = set([x['location'] for item in all_items for _, x in item.items()])
+
+        filtered_locations = [x for x in locations if x['code'] in used_locations]
+
+        self.location_list = {"[{}] {}".format(x['code'], x['name']): x['code'] for x in filtered_locations}
+
+        searchTerm = StringVar()
+        enter = Entry(self, textvariable=searchTerm)
+        enter.pack()
+
+        marketsOnly = BooleanVar()
+        locationVar = StringVar()
+        if self.this_type == 'input':
+            
+            marketsCheck = Checkbutton(self, text="Markets only?", variable=marketsOnly)
+            marketsCheck.pack()
+            
+            locationList = ttk.Combobox(self, textvariable=locationVar, values=list(self.location_list.keys()))
+            locationList.pack()
+
+        btn = Button(self, text='Search', command=partial(self.search, searchTerm, marketsOnly, locationVar))
+        btn.pack()
+        self.result_box = Listbox(self, width=self.w-20)
+        self.result_box.pack()
+
+        OKbtn = Button(self, text='OK', command=partial(self.choose))
+        OKbtn.pack()
+
+        self.focus_set()
+        self.grab_set()
+        self.transient(self.parent)
+        self.wait_window(self)
+
+    def search(self, *args):
+        
+        searchTerm = args[0].get()
+        marketsOnly = args[1].get()
+        location = args[2].get()
+        print(searchTerm, marketsOnly, location)
+        print (self.to_search)
+        
+        if location == "":
+            location = None
+        else:
+            location = self.location_list[location]
+
+        if self.this_type == 'input':
+
+            result = self.model.search_databases(searchTerm, databases_to_search=self.to_search, markets_only=marketsOnly, location=location,)
+
+        else:
+
+            result = self.model.search_databases(searchTerm, databases_to_search=self.to_search)  #, markets_only=marketsOnly, location=location,)
+
+        if self.this_type == 'input':
+            self.result_as_dict = {"{} [{} {{{}}}] ({})".format(v['reference product'], v['name'], v['location'], v['unit']) : (v['database'], v['code']) for k, v in result.items()}
+        else:
+            self.result_as_dict = {}
+
+            for k, v in result.items():
+
+                print(k, v.keys())
+
+                if v['type'] == 'emission':
+                    full_link_string = '{} (emission to {}) [{}]'.format(v['name'], ", ".join(v['categories']), v['unit'])
+                    print(full_link_string)  
+                else:
+                    full_link_string = '{} ({}) [{}]'.format(v['name'], ", ".join(v['categories']), v['unit'])
+                    print(full_link_string) 
+
+                self.result_as_dict[full_link_string] = (v['database'], v['code'])
+
+
+        self.result_box.delete(0, END)
+
+        for r in self.result_as_dict.keys():
+            print(r)
+            self.result_box.insert(END, r)
+
+    def choose(self, *args):
+
+        chosen = self.result_box.get(ACTIVE)
+
+        self.nameVar.set(chosen)
+        self.dbVar.set(self.result_as_dict[chosen][0])
+        self.codeVar.set(self.result_as_dict[chosen][1])
+
+        self.destroy()
+
+
 
 
 if __name__ == "__main__":
