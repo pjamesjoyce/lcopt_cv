@@ -17,6 +17,7 @@ class ImageProcessor():
     def __init__(self, imagepath):
         self.imagepath = imagepath
         self.image = None
+        self.model = None
         self.process()
 
     def process(self, threshLevel=115, boxApproxParameter=0.02, sizeThreshold=0.2, boxDilationIterations=1, lineDilateIterations = 3, equalizeBackground=True, skipDilation = False, skipClosing=False, maskThickness=8, duplicateThreshold=10):
@@ -106,8 +107,10 @@ class ImageProcessor():
 
         for n, b in enumerate(non_duplicate_boxes):
             (x, y, w, h) = b
+            sm_box = 30
             cv2.rectangle(image, (x, y), (x + w, y + h), color=(0, 255, 0), thickness=2)
-            cv2.putText(image, '{}'.format(n), (int(x+5), int(y+h-5)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), thickness=2)
+            cv2.rectangle(image, (x, y+h-sm_box), (x + sm_box, y + h), color=(0, 255, 0), thickness=-1)
+            cv2.putText(image, '{}'.format(n+1), (int(x+5), int(y+h-5)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), thickness=2)
 
         intermediates['boxes'] = image.copy()
 
@@ -135,7 +138,8 @@ class ImageProcessor():
 
         # find the links between boxed
 
-        linked_processes = {}
+        linked_processes = OrderedDict()
+        link_index = 0
         for i in combinations ([x for x in range(len(non_duplicate_boxes))],2):
             #print(i)
             temp_mask = cv2.dilate(close_lines.copy(), (15,15))
@@ -174,19 +178,21 @@ class ImageProcessor():
             #print(temp_mask[centroids[1][1], centroids[1][0]][0])
             if temp_mask[centroids[1][1], centroids[1][0]][0] == 127:
                 #print("{} is linked to {}".format(i[0], i[1]))
-                linked_processes[i] = centroids
+                linked_processes[link_index] = {'link':i, 'centroids': centroids}
+                link_index += 1
         
-        for lp, cs in linked_processes.items():
+        for k, v in linked_processes.items():
 
             #jitter = [0 for i in range(4)]#[randint(-3,3) for i in range(4)]
             
-            x1 = cs[0][0]  # + jitter[0]
-            y1 = cs[0][1]  # + jitter[1]
-            x2 = cs[1][0]  # + jitter[2]
-            y2 = cs[1][1]  # + jitter[3]
+            x1 = v['centroids'][0][0]  # + jitter[0]
+            y1 = v['centroids'][0][1]  # + jitter[1]
+            x2 = v['centroids'][1][0]  # + jitter[2]
+            y2 = v['centroids'][1][1]  # + jitter[3]
             
-            cv2.arrowedLine(image, (x1, y1), (x2, y2), (0,0,255), thickness=2)
-            cv2.putText(image, '{}'.format(lp), (int((x1+x2)/2), int((y1+y2)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), thickness=2)
+            #cv2.arrowedLine(image, (x1, y1), (x2, y2), (0,0,255), thickness=2)
+            cv2.line(image, (x1, y1), (x2, y2), (0,0,255), thickness=2)
+            cv2.putText(image, '({}, {})'.format(v['link'][0]+1,v['link'][1]+1), (int((x1+x2)/2), int((y1+y2)/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), thickness=1)
 
         box_images = [keep[y:y+h, x:x+w] for (x, y, w, h) in non_duplicate_boxes]
 
@@ -238,7 +244,10 @@ class ImageProcessor():
     def redraw_links(self):
         image = self.intermediates['boxes'].copy()
 
-        for lp, cs in self.links.items():
+        for k, v in self.links.items():
+
+            lp = v['link']
+            cs = v['centroids']
 
             #jitter = [0 for i in range(4)]  # [randint(-3,3) for i in range(4)]
             
@@ -247,8 +256,9 @@ class ImageProcessor():
             x2 = cs[1][0]  # + jitter[2]
             y2 = cs[1][1]  # + jitter[3]
             
-            cv2.arrowedLine(image, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
-            cv2.putText(image, '{}'.format(lp), (int((x1+x2)/2), int((y1+y2)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), thickness=2)
+            #cv2.arrowedLine(image, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
+            cv2.line(image, (x1, y1), (x2, y2), (0,0,255), thickness=2)
+            cv2.putText(image, '({}, {})'.format(lp[0]+1,lp[1]+1), (int((x1+x2)/2), int((y1+y2)/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), thickness=1)
 
         self.intermediates['final'] = image
 

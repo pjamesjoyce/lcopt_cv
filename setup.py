@@ -48,6 +48,7 @@ setup(
     entry_points = {
         'console_scripts': [
             'lcopt-cv = lcopt_cv.bin.lcopt_cv_gui:main',
+            'lcopt-cv-q = lcopt_cv.bin.lcopt_cv_gui_q:main',
         ]
     },
     #install_requires=[

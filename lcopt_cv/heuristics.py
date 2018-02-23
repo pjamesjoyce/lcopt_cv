@@ -4,6 +4,8 @@ from operator import itemgetter
 import numpy as np
 from itertools import combinations
 
+from collections import OrderedDict
+
 
 def round_down(num, divisor):
     return num - (num % divisor)
@@ -33,7 +35,7 @@ def get_stacks(node_dict, links):
         b = bottom_sorted_node_dict[0]['y2']
         
         nodes_in_stack = [x['index'] for x in g]
-        links_in_stack = [l for l in links.keys() if l[0] in nodes_in_stack and l[1] in nodes_in_stack]
+        links_in_stack = [k for k, v in links.items() if v['link'][0] in nodes_in_stack and v['link'][1] in nodes_in_stack]
         
         if len(list(g)) > 1:
             stacks.append({'l': l, 'r': r, 't': t, 'b': b, 'data': g, 'nodes': nodes_in_stack, 'links': links_in_stack})
@@ -82,7 +84,11 @@ def unstack(ip, stacks, maskThickness = 8):
 
         links_to_drop.extend([l for l in stack['links'] if l not in linked_processes.keys()])
 
-    links = {k: v for k, v in ip.links.items() if k not in links_to_drop} 
+    links = OrderedDict()
+    for k, v in ip.links.items():
+        if k not in links_to_drop:
+            links[k] = v
+        #{k: v for k, v in ip.links.items() if k not in links_to_drop} 
 
     return links
 
@@ -106,20 +112,48 @@ def directional_links(links, roundTolerance=20):
 
     directed_links = {}
     
-    for l, c in links.items():
+    for k, v in links.items():
+
+        c = v['centroids']
+        l = v['link']
+
+
         x1 = round_down(c[0][0], roundTolerance)
         x2 = round_down(c[1][0], roundTolerance)
         y1 = round_down(c[0][1], roundTolerance)
         y2 = round_down(c[1][1], roundTolerance)
         
         #print(x1, x2, y1, y2)
-        
-        if x1 > x2:
-            directed_links[(l[1], l[0])] = [c[1], c[0]]
-        elif x1 == x2 and y1 > y2:
-                directed_links[(l[1], l[0])] = [c[1], c[0]]
+
+        x_distance = x1 - x2
+        y_distance = y1 - y2
+
+        if x_distance <= 0:
+            isLeftOf = True
         else:
-            directed_links[l] = c
+            isLeftOf = False
+
+        if y_distance <= 0:
+            isAbove = True
+        else:
+            isAbove = False
+
+        if isAbove and isLeftOf:    # All ok
+            directed_links[k] = v
+
+        elif isAbove and not isLeftOf: # probably ok
+            directed_links[k] = v
+
+        elif not isAbove and isLeftOf: # probably needs to flip
+            directed_links[k] = {'link':(l[1], l[0]), 'centroids':[c[1], c[0]]}
+            #directed_links[(l[1], l[0])] = [c[1], c[0]]
+
+        elif not isAbove and not isLeftOf: # probably needs to be flipped
+            directed_links[k] = {'link':(l[1], l[0]), 'centroids':[c[1], c[0]]}
+            #directed_links[(l[1], l[0])] = [c[1], c[0]]
+        
+        else: # just in case
+            directed_links[k] = v
 
     return directed_links
 
@@ -132,8 +166,8 @@ def directional_links_pipeline(ip, roundTolerance=20):
 
 def prefer_linked(links):
     node_link_list = []
-    for l in links.keys():
-        node_link_list.extend(list(l))
+    for l ,v in links.items():
+        node_link_list.extend(list(v['link']))
 
     node_instances = {}
     for key, group in itertools.groupby(sorted(node_link_list)):
@@ -141,12 +175,15 @@ def prefer_linked(links):
 
     pl_links = {}
 
-    for l, c in links.items():
+    for k, v in links.items():
+
+        l = v['link']
+        c = v['centroids']
         
         if node_instances[l[0]] > 1 and node_instances[l[1]] == 1:
-            pl_links[(l[1], l[0])] = [c[1], c[0]]
+            pl_links[k] = {'link':(l[1], l[0]), 'centroids':[c[1], c[0]]}
         else:
-            pl_links[l] = c
+            pl_links[k] = v
 
     return pl_links
 

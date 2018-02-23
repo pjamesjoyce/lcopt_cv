@@ -14,10 +14,15 @@ from .grab_flow_chart import *
 from .heuristics import *
 from .send_to_lcopt import LcoptWriter
 
+this_path = os.path.dirname(os.path.realpath(__file__))
+assets = os.path.join(this_path, "assets")
+icon = os.path.join(assets, "icon.ico")
+
 DEFAULT_CONTROLS = [
             {'name': 'threshLevel',
              'type': 'scale',
              'label': 'Threshold level',
+             'display': True,
              'data': {
                 'value': 115,
                 'min': 0,
@@ -28,6 +33,7 @@ DEFAULT_CONTROLS = [
             {'name': 'boxDilationIterations',
              'type': 'scale',
              'label': 'Number of box dilation iterations',
+             'display': True,
              'data': {
                 'value': 1,
                 'min': 0,
@@ -38,6 +44,7 @@ DEFAULT_CONTROLS = [
             {'name': 'boxApproxParameter',
              'type': 'scale',
              'label': 'Box approximation parameter',
+             'display': False,
              'data': {
                 'value': 0.02,
                 'min': 0,
@@ -48,6 +55,7 @@ DEFAULT_CONTROLS = [
             {'name': 'sizeThreshold',
              'type': 'scale',
              'label': 'Size threshold',
+             'display': True,
              'data': {
                 'value': 0.2,
                 'min': 0,
@@ -58,6 +66,7 @@ DEFAULT_CONTROLS = [
             {'name': 'duplicateThreshold',
              'type': 'scale',
              'label': 'Threshold for duplicate boxes (euclidian distance)',
+             'display': True,
              'data': {
                 'value': 10,
                 'min': 0,
@@ -68,8 +77,9 @@ DEFAULT_CONTROLS = [
             {'name': 'lineDilateIterations',
              'type': 'scale',
              'label': 'Number of line dilation iterations',
+             'display': True,
              'data': {
-                'value': 3,
+                'value': 1,
                 'min': 0,
                 'max': 10,
                 'step': 1
@@ -78,6 +88,7 @@ DEFAULT_CONTROLS = [
             {'name': 'maskThickness',
              'type': 'scale',
              'label': 'line thickness for box mask',
+             'display': True,
              'data': {
                 'value': 8,
                 'min': 0,
@@ -88,6 +99,7 @@ DEFAULT_CONTROLS = [
             {'name': 'equalizeBackground',
              'type': 'checkbox',
              'label': 'Equalise background',
+             'display': True,
              'data': {
                 'value': True,
              }
@@ -95,6 +107,7 @@ DEFAULT_CONTROLS = [
             {'name': 'skipClosing',
              'type': 'checkbox',
              'label': 'Skip closing step (for incomplete boxes)',
+             'display': True,
              'data': {
                 'value': False,
              }
@@ -102,6 +115,7 @@ DEFAULT_CONTROLS = [
             {'name': 'unstack',
              'type': 'checkbox',
              'label': 'Unstack spurious links',
+             'display': True,
              'data': {
                 'value': False,
              }
@@ -109,6 +123,7 @@ DEFAULT_CONTROLS = [
             {'name': 'directional',
              'type': 'checkbox',
              'label': 'Use directional heuristic',
+             'display': True,
              'data': {
                 'value': True,
              }
@@ -116,6 +131,7 @@ DEFAULT_CONTROLS = [
             {'name': 'prefer_linked',
              'type': 'checkbox',
              'label': 'Use prefer linked heuristic',
+             'display': True,
              'data': {
                 'value': False,
              }
@@ -123,6 +139,7 @@ DEFAULT_CONTROLS = [
             {'name': 'skipDilation',
              'type': 'checkbox',
              'label': 'Skip dilation step for boxes',
+             'display': False,
              'data': {
                 'value': False,
              }
@@ -159,17 +176,30 @@ class ImageGui:
 
     def __init__(self, controls=DEFAULT_CONTROLS):
 
-        self.sm_Image = 245  # 230
-        self.lg_Image = 800  # 750
 
-        this_path = os.path.dirname(os.path.realpath(__file__))
-        assets = os.path.join(this_path, "assets")
-        icon = os.path.join(assets, "icon.ico")
+        #this_path = os.path.dirname(os.path.realpath(__file__))
+        #assets = os.path.join(this_path, "assets")
+        #icon = os.path.join(assets, "icon.ico")
 
         self.root = Tk()
         self.root.title("Flow chart image processor")
         self.root.iconbitmap(icon)
+
+        self.screen_width = self.root.winfo_screenwidth()
+        self.screen_height = self.root.winfo_screenheight()
+
+        self.root.state("zoomed")
+
+        self.root.minsize(width=int(self.screen_width * 0.6), height=int(self.screen_height * 0.6))
+        #self.root.maxsize(width=screen_width, height=int(screen_height*0.8))
+        #self.root.attributes('-zoomed', True)
+
+        #self.root.geometry = "{}x{}".format(screen_height, screen_width)
         
+
+        self.sm_Image = int(self.screen_height / 4)  #245  # 230
+        self.lg_Image = int(self.sm_Image * 2.5)  #800  # 750
+
         self.IMAGEPATH = None
         self.IMAGEPROCESSOR_OBJECT = None
 
@@ -183,14 +213,20 @@ class ImageGui:
         blank_sm = ImageTk.PhotoImage(blank_sm)
         blank_lg = ImageTk.PhotoImage(blank_lg)
         
-        self.left_frame = Frame(self.root, width=750, height=750)
-        self.left_frame.pack(side="left")
+        self.left_frame = Frame(self.root)
+        self.left_frame.grid(column=0, row=0, rowspan=2)
+        #self.left_frame.pack(side="left")
 
-        self.middle_frame = Frame(self.root, width=750, height=750)
-        self.middle_frame.pack(side="left")
+        self.middle_frame = Frame(self.root)
+        #self.middle_frame.pack(side="left")
+        self.middle_frame.grid(column=1, row=0)
 
-        self.right_frame = Frame(self.root, width=250, height=750)
-        self.right_frame.pack(side="left", expand=True)
+        self.button_frame = Frame(self.root)
+        self.button_frame.grid(column=1, row=1)
+
+        self.right_frame = Frame(self.root)
+        #self.right_frame.pack(side="left", expand=True)
+        self.right_frame.grid(column=2, row=0, rowspan=2)
 
         # set up image panels
 
@@ -221,47 +257,58 @@ class ImageGui:
 
         # set up controls
 
-        btn = Button(self.right_frame, text="Select an image", command=self.select_image)
-        btn.pack(side="top", fill="both", expand="yes", padx="10")
+        btn = Button(self.button_frame, text="Select an image", command=self.select_image)
+        btn.pack(side="left")
 
-        self.reset_btn = Button(self.right_frame, text="Reset defaults", command=self.reset_defaults, state=DISABLED)
-        self.reset_btn.pack(side="top", fill="both", expand="yes", padx="10")
+        self.reset_btn = Button(self.button_frame, text="Reset defaults", command=self.reset_defaults, state=DISABLED)
+        self.reset_btn.pack(side="left")
 
         for control in self.controls:
             setattr(self, control['name'], control['data']['value'])
+
+            if control['display']:
             
-            if control['type'] == 'checkbox':
-                setattr(self, '{}Var'.format(control['name']), BooleanVar())
+                if control['type'] == 'checkbox':
+                    setattr(self, '{}Var'.format(control['name']), BooleanVar())
 
-                controlName = '{}Check'.format(control['name'])
-                variableName = '{}Var'.format(control['name'])
+                    controlName = '{}Check'.format(control['name'])
+                    variableName = '{}Var'.format(control['name'])
 
-                setattr(self, controlName, Checkbutton(
-                    self.right_frame, text=control['label'], variable=getattr(self, variableName),
-                    onvalue=True, offvalue=False, command=partial(self.eventHandler, control['name'], variableName), state=DISABLED
-                ))
+                    setattr(self, controlName, Checkbutton(
+                        self.right_frame, text=control['label'], variable=getattr(self, variableName),
+                        onvalue=True, offvalue=False, command=partial(self.eventHandler, control['name'], variableName), state=DISABLED
+                    ))
 
-                if getattr(self, control['name']):
-                    getattr(self, controlName).select()
+                    if getattr(self, control['name']):
+                        getattr(self, controlName).select()
 
-                getattr(self, controlName).pack(anchor='w')
+                    getattr(self, controlName).pack(anchor='w')
 
-            elif control['type'] == 'scale':
-                Label(self.right_frame, text=control['label']).pack()
-                controlName = '{}Slider'.format(control['name'])
-                from_ = control['data']['min']
-                to = control['data']['max']
-                tickinterval = to - from_
-                resolution = control['data']['step']
-                setattr(self, controlName, Scale(self.right_frame, from_=from_, to=to, tickinterval=tickinterval, resolution=resolution, orient=HORIZONTAL, state=DISABLED, length=250, command=partial(self.eventHandler, control['name'], controlName)))
-                getattr(self, controlName).set(control['data']['value'])
-                getattr(self, controlName).pack()
+                elif control['type'] == 'scale':
+                    Label(self.right_frame, text=control['label']).pack()
+                    controlName = '{}Slider'.format(control['name'])
+                    from_ = control['data']['min']
+                    to = control['data']['max']
+                    tickinterval = to - from_
+                    resolution = control['data']['step']
+                    setattr(self, controlName, Scale(
+                        self.right_frame, from_=from_, to=to, tickinterval=tickinterval,
+                        resolution=resolution, orient=HORIZONTAL, state=DISABLED, length=300, width=10,
+                        command=partial(self.eventHandler, control['name'], controlName)
+                        ))
+                    getattr(self, controlName).set(control['data']['value'])
+                    getattr(self, controlName).pack()
 
-        self.rp_btn = Button(self.right_frame, text="Reprocess image", command=self.reprocess_image, state=DISABLED)
-        self.rp_btn.pack(fill="both", expand="yes", padx="10")
+        self.rp_btn = Button(self.button_frame, text="Reprocess image", command=self.reprocess_image, state=DISABLED)
+        self.rp_btn.pack(side="left")
 
-        self.generate_btn = Button(self.right_frame, text="Generate LCA model", command= self.generate_model, state=DISABLED)
-        self.generate_btn.pack(fill="both", expand="yes", padx=10)                
+        self.launch_lcopt_btn = Button(self.button_frame, text="Launch LCA model", command=self.launch_lcopt, state=DISABLED)  
+        self.launch_lcopt_btn.pack(side="right")  
+
+        self.generate_btn = Button(self.button_frame, text="Generate LCA model", command= self.generate_model, state=DISABLED)
+        self.generate_btn.pack(side="right")
+
+                    
 
     def select_image(self):
 
@@ -340,69 +387,96 @@ class ImageGui:
     def enable_controls(self):
 
         for control in self.controls:
-            if control['type'] == 'scale':
-                controlName = '{}Slider'.format(control['name'])
-            elif control['type'] == 'checkbox':
-                controlName = '{}Check'.format(control['name'])
+            if control['display']:
+                if control['type'] == 'scale':
+                    controlName = '{}Slider'.format(control['name'])
+                elif control['type'] == 'checkbox':
+                    controlName = '{}Check'.format(control['name'])
 
-            getattr(self, controlName).config(state="normal")
+                getattr(self, controlName).config(state="normal")
 
-            self.rp_btn.config(state="normal")
-            self.reset_btn.config(state="normal")
+        self.rp_btn.config(state="normal")
+        self.reset_btn.config(state="normal")
 
     def reset_defaults(self):
 
         for control in self.controls:
-            setattr(self, control['name'], control['data']['value'])
-            if control['type'] == 'scale':
-                getattr(self, '{}Slider'.format(control['name'])).set(control['data']['value'])
-            elif control['type'] == 'checkbox':
-                if control['data']['value']:
-                    getattr(self, '{}Check'.format(control['name'])).select()
-                else:
-                    getattr(self, '{}Check'.format(control['name'])).deselect()
+            if control['display']:
+                setattr(self, control['name'], control['data']['value'])
+                if control['type'] == 'scale':
+                    getattr(self, '{}Slider'.format(control['name'])).set(control['data']['value'])
+                elif control['type'] == 'checkbox':
+                    if control['data']['value']:
+                        getattr(self, '{}Check'.format(control['name'])).select()
+                    else:
+                        getattr(self, '{}Check'.format(control['name'])).deselect()
 
     def reprocess_image(self):
         self.process_image()
 
     def generate_model(self):
         #messagebox.showinfo("Information", "Informative message")
-        wizard = Toplevel(height=500, width=800)
-        wizard.geometry('800x800')
+        w = min(1000, self.screen_width)
+        h = min(750, int(self.screen_height*0.8))
+
+        #print(w, h)
+
+        wizard = Toplevel()
+        wizard.maxsize(width=w, height=h)
+
+        wizard.geometry("%dx%d%+d%+d" % (w, h, 50, 50))  # int(self.screen_width-w/2), int(self.screen_height-h/2)))
+        #wizard.geometry('500x800')
         wizard.title("Generate LCA model")
+        wizard.iconbitmap(icon)
         #frame = Frame(wizard, height=500, width=800)
         #button = Button(wizard, text="Dismiss", command=wizard.destroy)
         #button.pack()
-        content = LcaWizard(wizard, self.IMAGEPROCESSOR_OBJECT)
+        content = LcaWizard(wizard, self.IMAGEPROCESSOR_OBJECT, self, w, h)
         #content.pack()
+        #if self.IMAGEPROCESSOR_OBJECT.model is not None:
+        #    self.launch_lcopt_btn.config(state="normal")
+
+    def launch_lcopt(self):
+
+        self.root.withdraw()
+
+        model = self.IMAGEPROCESSOR_OBJECT.model
+
+        model.launch_interact()
+
+        self.root.deiconify()
+
+        self.root.state("zoomed")
+
 
     def run(self):
         self.root.mainloop()
 
 class LcaWizard(Frame):
-    def __init__(self, parent, ip):
+    def __init__(self, parent, ip, root, w, h):
         super().__init__(parent)
 
         self.toplevel = parent
 
         self.ip = ip
-       
+
+        self.root = root
 
         self.button_frame = Frame(self, bd=1, relief="raised")
-        self.content_frame = Frame(self, bg="blue")
+        self.content_frame = Frame(self)
 
         self.back_button = Button(self.button_frame, text="<< Back", command=self.back)
         self.next_button = Button(self.button_frame, text="Next >>", command=self.next)
         self.finish_button = Button(self.button_frame, text="Finish", command=self.finish)
 
-        self.grid_rowconfigure(0, minsize=750, weight=1)
-        self.grid_rowconfigure(1, minsize=50, weight=0)
-        self.grid_columnconfigure(0, minsize=800, weight=0)
+        #self.grid_rowconfigure(0, minsize=450, weight=1)
+        #self.grid_rowconfigure(1, minsize=50, weight=0)
+        #self.grid_columnconfigure(0, minsize=500, weight=0)
 
         self.button_frame.grid(row=1, column=0, sticky=N+S+E+W)  #.pack(side="bottom", fill="x")
         self.content_frame.grid(row=0, column=0, sticky=N+S+E+W)  #pack(side="top", fill="both", expand=True)
         
-        self.steps = [NodeStep(self.content_frame, ip), LinkStep(self.content_frame, ip)]
+        self.steps = [NodeStep(self.content_frame, ip, w, h), LinkStep(self.content_frame, ip, w, h)]
         self.current_step = 0
         self.show_step(0)
 
@@ -439,9 +513,32 @@ class LcaWizard(Frame):
 
     def next(self):
         if self.current_step == 0:
+
+            senders = [v['link'][0] for k, v in self.ip.links.items()]
+            receivers = [v['link'][1] for k, v in self.ip.links.items()]
+
             for k,v in self.steps[0].data.items():
                 self.ip.nodes[k]['name'] = v['nameVar'].get()
                 self.ip.nodes[k]['type'] = v['typeVar'].get()
+
+                if self.ip.nodes[k]['type'] == 'input' or self.ip.nodes[k]['type'] == 'biosphere':
+
+                    if k in receivers:
+                        print("need to reverse links for item {}, ({})".format(k, self.ip.nodes[k]['name']))
+                        links_to_fix = [i for i, l in self.ip.links.items() if l['link'][1] == k]
+                        if len(links_to_fix) > 1 :
+                            print("too many links - this can't be an input/biosphere exchange")
+                        else:
+                            old_key = self.ip.links[links_to_fix[0]]['link']
+                            new_key = (old_key[1],old_key[0])
+
+                            old_line = self.ip.links[links_to_fix[0]]['centroids']
+                            new_line = [old_line[1], old_line[0]]
+
+                            self.ip.links[links_to_fix[0]]['link'] = new_key
+                            self.ip.links[links_to_fix[0]]['centroids'] = new_line
+
+        #print(self.ip.links)
 
         self.steps[1].draw()
         self.show_step(self.current_step + 1)
@@ -455,17 +552,21 @@ class LcaWizard(Frame):
 
         lw = LcoptWriter(self.ip, "{}_model".format(fname), False)
 
+        self.ip.model = lw.get_model()
+
         self.toplevel.destroy()
 
+        self.root.launch_lcopt_btn.config(state="normal")
+
 class NodeStep(Frame):
-    def __init__(self, parent, ip):
+    def __init__(self, parent, ip, w, h):
         super().__init__(parent)
 
         #self.config(bg="white")
 
         # this needs to be transferred to the gui
-        senders = [k[0] for k in ip.links.keys()]
-        receivers = [k[1] for k in ip.links.keys()]
+        senders = [v['link'][0] for k, v in ip.links.items()]
+        receivers = [v['link'][1] for k, v in ip.links.items()]
 
         inputs = [n for n in ip.nodes.keys() if n in senders and n not in receivers]
         intermediates = [n for n in ip.nodes.keys() if n not in inputs]
@@ -477,17 +578,20 @@ class NodeStep(Frame):
         self.node_frames = []
         self.data = OrderedDict()
 
-        self.grid_rowconfigure(0, minsize=750, weight=1)
-        self.grid_columnconfigure(0, minsize=785, weight=1)
+        #self.grid_rowconfigure(0, minsize=450, weight=1)
+        #self.grid_columnconfigure(0, minsize=785, weight=1)
 
         img_size = 150
+        scroll_pixels = 20
+        panel_pixels = 30
 
         scrollsize = img_size * len(ip.nodes)
 
         yscrollbar = Scrollbar(self)
         yscrollbar.grid(row=0, column=1, sticky=N+S) # pack(side="right", fill="y") 
 
-        canvas = Canvas(self, bd=0, yscrollcommand=yscrollbar.set, scrollregion=(0, 0, 800, scrollsize))
+        canvas = Canvas(self, bd=0, yscrollcommand=yscrollbar.set, scrollregion=(0, 0, w, scrollsize))
+        canvas.config(width=w-scroll_pixels, height = h-panel_pixels)
 
         scroll_frame = Frame(canvas)
 
@@ -499,6 +603,9 @@ class NodeStep(Frame):
         #img_size = 150
         
         for n, (k, node) in enumerate(ip.nodes.items()):
+
+
+            associated_links = [l for l, v in ip.links.items() if v['link'][0] == k or v['link'][1] == k]
 
             this_frame = Frame(scroll_frame, width=800, height=img_size)
             image_frame = Frame(this_frame, width=200, height=img_size, relief="groove")
@@ -529,7 +636,7 @@ class NodeStep(Frame):
             #self.data[n]['name'] = "Box {}".format(n)
             self.data[n]['nameVar'] = StringVar()
             #self.data[n]['nameVar'].trace("w", lambda name, index, mode, sv=self.data[n]['nameVar']: self.updateData(n, sv))
-            self.data[n]['nameVar'].set("Box {}".format(n))
+            self.data[n]['nameVar'].set("Box {}".format(n+1))
             self.data[n]['nameEntry'] = Entry(control_frame, textvariable=self.data[n]['nameVar'])
             self.data[n]['nameEntry'].grid(column=1, row=0)
 
@@ -542,7 +649,10 @@ class NodeStep(Frame):
                 this_type = 'intermediate'
 
             self.data[n]['typeVar'].set(this_type)
-            self.data[n]['typeDropDown'] = OptionMenu(control_frame, self.data[n]['typeVar'], *types) #Entry(control_frame, textvariable=self.data[n]['typeVar'], state=DISABLED)
+            if len(associated_links) > 1:
+                self.data[n]['typeDropDown'] = OptionMenu(control_frame, self.data[n]['typeVar'], 'intermediate') 
+            else:
+                self.data[n]['typeDropDown'] = OptionMenu(control_frame, self.data[n]['typeVar'], *types) 
             self.data[n]['typeDropDown'].grid(column=1, row=1)
             
             #Label(control_frame, text="External link:").grid(column=0, row=2)
@@ -561,96 +671,180 @@ class NodeStep(Frame):
         #canvas.config(scrollregion=canvas.bbox(ALL))
 
 class LinkStep(Frame):
-    def __init__(self, parent, ip):
+    def __init__(self, parent, ip, w, h):
         super().__init__(parent)
 
         self.parent = parent
         self.ip = ip
 
-        #self.config(bg="white")
-    def draw(self):
-        # this needs to be transferred to the gui
-        senders = [k[0] for k in self.ip.links.keys()]
-        receivers = [k[1] for k in self.ip.links.keys()]
+        self.data = OrderedDict()
 
-        inputs = [n for n in self.ip.nodes.keys() if n in senders and n not in receivers]
-        intermediates = [n for n in self.ip.nodes.keys() if n not in inputs]
+        self.image_frame = Frame(self)
+        self.image_frame.grid(column=0,row=0, sticky=N+S)
+
+        self.w = w
+        self.h = h
+
+        scroll_pixels = 20
+        panel_pixels = 30
+
+        scrollsize = 800
+
+        self.img_size = int(min((w - scroll_pixels) * 0.6, h-panel_pixels))
+
+        yscrollbar = Scrollbar(self)
+        yscrollbar.grid(row=0, column=2, sticky=N+S) # pack(side="right", fill="y") 
+
+        control_width = w - self.img_size - scroll_pixels - 5
+
+        self.canvas = Canvas(self, bd=0, yscrollcommand=yscrollbar.set, scrollregion=(0, 0, w - scroll_pixels, scrollsize))
+        self.canvas.config(width=control_width, height = h - panel_pixels)
+
+        self.canvas.grid(row=0, column=1, sticky=N+S+E+W)
+
+        yscrollbar.config(command=self.canvas.yview)
+
+        self.scroll_frame = Frame(self.canvas)
+
+        self.control_frame = Frame(self.scroll_frame)
+        self.control_frame.grid(row=0, column=0, sticky=N+S+E+W)
+       
+
+        self.canvas.create_window((0,0), window=self.scroll_frame, anchor=N+W)
+        
+
+    def draw(self):
+
+        intermediates = [k for k, v in self.ip.nodes.items() if v['type'] =='intermediate']
+
+        int_to_int_links = [l for l, v in self.ip.links.items() if v['link'][0] in intermediates and v['link'][1] in intermediates]
+
+        #print(int_to_int_links)
+
+        control_width = self.w - self.img_size - 25
+
+
+
+        #clear control_frame
+
+        for i in self.control_frame.grid_slaves():
+            i.destroy()
+
+        link_frames = []
+
+        Label(self.control_frame, text="Click on the arrow buttons to reverse the link").grid(column=0, row=0)
+
+        for link in int_to_int_links:
+
+            link_tuple = self.ip.links[link]['link']
+
+            self.data[link] = {}
+            self.data[link]['linkVar'] = BooleanVar()
+            self.data[link]['linkVar'].set(False)
+
+            this_frame = Frame(self.control_frame)
+
+            this_frame.grid_columnconfigure(0, minsize=int(control_width * 0.4))
+            this_frame.grid_columnconfigure(1, minsize=int(control_width * 0.2))
+            this_frame.grid_columnconfigure(2, minsize=int(control_width * 0.4))
+
+            fromLabel = Label(this_frame, text=self.ip.nodes[link_tuple[0]]['name'])
+            self.data[link]['linkBtn'] = Button(this_frame, text="-->", command=partial(self.flip_link, link, self.ip) )
+            toLabel = Label(this_frame, text=self.ip.nodes[link_tuple[1]]['name'])
+
+            fromLabel.grid(column=0, row=0)
+            self.data[link]['linkBtn'].grid(column=1, row=0)
+            toLabel.grid(column=2, row=0)
+
+            link_frames.append(this_frame)
+
+        for n, frame in enumerate(link_frames):
+            frame.grid(column=0, row=n+1, pady=10)
+
+
 
         types = ['input', 'intermediate', 'biosphere']
         type_colors = {
-            'input': (255, 127, 127),
-            'intermediate': (127, 127, 127),
-            'biosphere': (0, 0, 0)
+            'input': (191, 144, 99),
+            'intermediate': (228, 227, 225),
+            'biosphere': (102, 96, 91)
+        }
+        type_line_colors = {
+            'input': (154, 111, 46),
+            'intermediate': (170, 170, 170),
+            'biosphere': (81, 76, 72)
+        }
+        type_text_colors = {
+            'input': (255, 255, 255),
+            'intermediate': (0, 0, 0),
+            'biosphere': (255, 255, 255)
         }
 
-        #Label(self, text="Hello - from NodeStep").grid(column=0, row=0)
-
-        self.data = OrderedDict()
-
-        self.grid_rowconfigure(0, minsize=750, weight=1)
-        self.grid_columnconfigure(0, minsize=785, weight=1)
-
-        img_size = 650
-
-        scrollsize = img_size * len(self.ip.nodes)
-
-        yscrollbar = Scrollbar(self)
-        yscrollbar.grid(row=0, column=1, sticky=N+S) # pack(side="right", fill="y") 
-
-        canvas = Canvas(self, bd=0, yscrollcommand=yscrollbar.set, scrollregion=(0, 0, 800, scrollsize))
-
-        scroll_frame = Frame(canvas)
-
-        canvas.grid(row=0, column=0, sticky=N+S+E+W)
-        #canvas.pack(side="left", fill="both", expand=True)
-
-        yscrollbar.config(command=canvas.yview)
+        #scroll_frame = Frame(self.canvas)
 
         #img_size = 150
 
-        w, h = self.ip.image.shape[:2]
+        img_w, img_h = self.ip.image.shape[:2]
 
-        link_image = np.full((w, h, 3), 255, dtype=np.uint8)
+        link_image = np.full((img_w, img_h, 3), 255, dtype=np.uint8)
         
         for n, (k, node) in enumerate(self.ip.nodes.items()):
             (x, y, w, h) = node['coords']
-            cv2.rectangle(link_image, (x, y), (x + w, y + h), color=type_colors[node['type']], thickness=8)
-            cv2.putText(link_image, '{}'.format(node['name']), (int(x+15), int(y+h-15)), cv2.FONT_HERSHEY_SIMPLEX, 1, type_colors[node['type']], thickness=2)
+            cv2.rectangle(link_image, (x, y), (x + w, y + h), color=type_colors[node['type']], thickness=-1)
+            cv2.rectangle(link_image, (x, y), (x + w, y + h), color=type_line_colors[node['type']], thickness=2)
+            cv2.putText(link_image, '{}'.format(node['name']), (int(x+15), int(y+h-15)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, type_text_colors[node['type']], thickness=1)
 
         for n, (k, link) in enumerate(self.ip.links.items()):
 
-            link_type = self.ip.nodes[k[0]]['type']
+            link_type = self.ip.nodes[link['link'][0]]['type']
+            c = link['centroids']
 
             if link_type != 'biosphere':
                 
-                x1 = link[0][0]  
-                y1 = link[0][1]  
-                x2 = link[1][0]  
-                y2 = link[1][1]  
+                x1 = c[0][0]  
+                y1 = c[0][1]  
+                x2 = c[1][0]  
+                y2 = c[1][1]  
 
             else:
 
-                x2 = link[0][0]  
-                y2 = link[0][1]  
-                x1 = link[1][0]  
-                y1 = link[1][1]  
+                x2 = c[0][0]  
+                y2 = c[0][1]  
+                x1 = c[1][0]  
+                y1 = c[1][1]  
 
             
-            cv2.arrowedLine(link_image, (x1, y1), (x2, y2), type_colors[link_type], thickness=2)
+            cv2.arrowedLine(link_image, (x1, y1), (x2, y2), type_line_colors[link_type], thickness=2)
 
 
-        link_image_tk = convert_to_tkinter_image(link_image, img_size)
+        link_image_tk = convert_to_tkinter_image(link_image, self.img_size)
 
-        show_img = Label(scroll_frame, image=link_image_tk, relief="groove")
+        show_img = Label(self.image_frame, image=link_image_tk)
         show_img.image = link_image_tk
-        show_img.grid(column=1, row=0)
+        show_img.grid(column=0, row=0)
 
 
         #for n, f in enumerate(self.link_frames):
         #    f.grid(column=0, row=n)
         
-        canvas.create_window((0,0), window=scroll_frame, anchor=N+W)
+        
         #canvas.config(scrollregion=canvas.bbox(ALL))
+
+    def flip_link(self, *args):
+        
+        link = args[0]
+        ip = args[1]
+        
+        old_key = self.ip.links[link]['link']
+        new_key = (old_key[1],old_key[0])
+
+        old_line = self.ip.links[link]['centroids']
+        new_line = [old_line[1], old_line[0]]
+
+        self.ip.links[link]['link'] = new_key
+        self.ip.links[link]['centroids'] = new_line
+
+        self.draw()
 
 
 if __name__ == "__main__":

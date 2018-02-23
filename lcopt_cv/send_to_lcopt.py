@@ -35,7 +35,7 @@ class LcoptWriter:
             process_name = ip.nodes[i]['name']
             output_name = "Output of {}".format(process_name)
             my_exchanges = [{'name': output_name, 'type': 'production', 'unit': 'kg', 'lcopt_type': 'intermediate'}]
-            things_to_link = [x[0] for x in ip.links.keys() if x[1] == i]
+            things_to_link = [x['link'][0] for k, x in ip.links.items() if x['link'][1] == i]
             
             for l in things_to_link:
                 if l in inputs or l in biosphere:
@@ -60,3 +60,8 @@ class LcoptWriter:
 
         if launch:
             model.launch_interact()
+
+        self.model = model
+
+    def get_model(self):
+        return self.model
