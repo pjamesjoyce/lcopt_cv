@@ -128,31 +128,29 @@ def directional_links(links, roundTolerance=20):
         x_distance = x1 - x2
         y_distance = y1 - y2
 
-        if x_distance <= 0:
-            isLeftOf = True
+        position_info = [0, 0]  # horizontal, vertical
+
+        if x_distance < 0:
+            position_info[0] = -1
+        elif x_distance == 0:
+            position_info[0] = 0
         else:
-            isLeftOf = False
+            position_info[0] = 1
 
-        if y_distance <= 0:
-            isAbove = True
+        if y_distance < 0:
+            position_info[1] = -1
+        elif y_distance == 0:
+            position_info[1] = 0
         else:
-            isAbove = False
+            position_info[1] = 1
 
-        if isAbove and isLeftOf:    # All ok
-            directed_links[k] = v
+        #ok_list = [(-1, -1), (-1, 0), (-1, 1), (0, -1)]
+        flip_list = [[1, -1], [1, 0], [1, 1], [0, 1]]
 
-        elif isAbove and not isLeftOf: # probably ok
-            directed_links[k] = v
-
-        elif not isAbove and isLeftOf: # probably needs to flip
+        if position_info in flip_list: # probably needs to be flipped
             directed_links[k] = {'link':(l[1], l[0]), 'centroids':[c[1], c[0]]}
-            #directed_links[(l[1], l[0])] = [c[1], c[0]]
-
-        elif not isAbove and not isLeftOf: # probably needs to be flipped
-            directed_links[k] = {'link':(l[1], l[0]), 'centroids':[c[1], c[0]]}
-            #directed_links[(l[1], l[0])] = [c[1], c[0]]
         
-        else: # just in case
+        else: 
             directed_links[k] = v
 
     return directed_links

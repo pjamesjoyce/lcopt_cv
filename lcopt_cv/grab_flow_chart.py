@@ -257,6 +257,8 @@ class ImageProcessor():
             y2 = cs[1][1]  # + jitter[3]
             
             #cv2.arrowedLine(image, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
+            cv2.circle(image, (x1, y1), 4, (127,127,127), thickness=3)
+            cv2.circle(image, (x2, y2), 4, (127,127,127), thickness=3)
             cv2.line(image, (x1, y1), (x2, y2), (0,0,255), thickness=2)
             cv2.putText(image, '({}, {})'.format(lp[0]+1,lp[1]+1), (int((x1+x2)/2), int((y1+y2)/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), thickness=1)
 

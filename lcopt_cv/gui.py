@@ -161,10 +161,12 @@ def resize_to_square(image, side_length):
 
 
 def convert_to_tkinter_image(image, size):
-    try:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    except cv2.error:
-        pass
+
+    if len(image.shape) > 2:
+        try:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        except cv2.error:
+            pass
 
     image = Image.fromarray(image)
     image = resize_to_square(image, size)
