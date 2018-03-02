@@ -12,19 +12,26 @@ def round_down(num, divisor):
 
 
 def nodes_as_dict(ip):
-    return [{'index': n, 'x1': x, 'x2': x + w, 'y1': y, 'y2': y + h} for n, (x, y, w, h) in enumerate(ip.box_coords)]
+    #return [{'index': n, 'x1': x, 'x2': x + w, 'y1': y, 'y2': y + h} for n, (x, y, w, h) in enumerate(ip.box_coords)]
+    return [{'index': n, 'x1': x, 'x2': x + w, 'y1': y, 'y2': y + h, 'cx': x + w / 2, 'cy': y + h / 2} for n, (x, y, w, h) in enumerate(ip.box_coords)]
 
 
 def get_stacks(node_dict, links):
 
-    sorted_node_dict = sorted(node_dict, key=itemgetter('x1'))
+    sorted_node_dict1 = sorted(node_dict, key=itemgetter('cx'))
+    sorted_node_dict2 = sorted(node_dict, key=itemgetter('cy'))
 
     stacks = []
 
-    for key, group in itertools.groupby(sorted_node_dict, key=lambda x: round_down(x['x1'], 5)):
-        l = int(key)
+    # VERTICAL STACKS
+
+    for key, group in itertools.groupby(sorted_node_dict1, key=lambda x: round_down(x['cx'], 20)):
+        c = int(key)
         g = list(group)
         
+        left_sorted_node_dict = sorted(g, key=itemgetter('x1'))
+        l = left_sorted_node_dict[0]['x1']
+
         right_sorted_node_dict = sorted(g, key=itemgetter('x2'), reverse=True)
         r = right_sorted_node_dict[0]['x2']
         
@@ -36,15 +43,46 @@ def get_stacks(node_dict, links):
         
         nodes_in_stack = [x['index'] for x in g]
         links_in_stack = [k for k, v in links.items() if v['link'][0] in nodes_in_stack and v['link'][1] in nodes_in_stack]
-        
+        #print("Nodes in this stack {}\n".format(nodes_in_stack))
+        #print("Links in this stack {}\n".format(links_in_stack))
         if len(list(g)) > 1:
             stacks.append({'l': l, 'r': r, 't': t, 'b': b, 'data': g, 'nodes': nodes_in_stack, 'links': links_in_stack})
+    
+    #print ("{}".format([stack['nodes'] for stack in stacks]))
+
+    # HORIZONTAL STACKS
+
+    for key, group in itertools.groupby(sorted_node_dict2, key=lambda x: round_down(x['cy'], 20)):
+        c = int(key)
+        g = list(group)
+        print([x['index'] for x in g])
+        
+        left_sorted_node_dict = sorted(g, key=itemgetter('x1'))
+        l = left_sorted_node_dict[0]['x1']
+
+        right_sorted_node_dict = sorted(g, key=itemgetter('x2'), reverse=True)
+        r = right_sorted_node_dict[0]['x2']
+        
+        top_sorted_node_dict = sorted(g, key=itemgetter('y1'))
+        t = top_sorted_node_dict[0]['y1']
+        
+        bottom_sorted_node_dict = sorted(g, key=itemgetter('y2'), reverse=True)
+        b = bottom_sorted_node_dict[0]['y2']
+        
+        nodes_in_stack = [x['index'] for x in g]
+        links_in_stack = [k for k, v in links.items() if v['link'][0] in nodes_in_stack and v['link'][1] in nodes_in_stack]
+        #print("Nodes in this stack {}\n".format(nodes_in_stack))
+        #print("Links in this stack {}\n".format(links_in_stack))
+        if len(list(g)) > 1:
+            stacks.append({'l': l, 'r': r, 't': t, 'b': b, 'data': g, 'nodes': nodes_in_stack, 'links': links_in_stack})
+
+    print ("{}".format([stack['nodes'] for stack in stacks]))
 
     return stacks
 
 
 def unstack(ip, stacks, maskThickness = 8):
-    
+
     links_to_drop = []
 
     for stack in stacks:
@@ -57,7 +95,10 @@ def unstack(ip, stacks, maskThickness = 8):
 
         linked_processes = {}
 
-        for i in combinations ([x for x in range(len(nodes))], 2):
+        #for i in combinations ([x for x in range(len(nodes))], 2):
+        for i in combinations (stack['nodes'], 2):
+
+            test_mask = temp_mask.copy()
 
             centroids = []
 
@@ -72,17 +113,26 @@ def unstack(ip, stacks, maskThickness = 8):
                 centroids.append(ct)
 
                 color = (255, 255, 255)
-                cv2.rectangle(temp_mask, pt1, pt2, color, thickness=-1, lineType=8, shift=0) 
-                cv2.rectangle(temp_mask, pt1, pt2, color, thickness=maskThickness, lineType=8, shift=0)
+                cv2.rectangle(test_mask, pt1, pt2, color, thickness=-1, lineType=8, shift=0) 
+                cv2.rectangle(test_mask, pt1, pt2, color, thickness=maskThickness, lineType=8, shift=0)
 
             flood_colour = (127, 127, 127)
-            cv2.floodFill(temp_mask, None, centroids[0], flood_colour)
+            cv2.floodFill(test_mask, None, centroids[0], flood_colour)
 
-            if temp_mask[centroids[1][1], centroids[1][0]] == 127:
+            if test_mask[centroids[1][1], centroids[1][0]] == 127:
+
+                print("{} are linked".format(i))
 
                 linked_processes[i] = centroids
+        
+        for l in stack['links']:
+            s_link = ip.links[l]['link']
+            s_link_alt = (s_link[1], s_link[0])
 
-        links_to_drop.extend([l for l in stack['links'] if l not in linked_processes.keys()])
+            if s_link not in linked_processes.keys() and s_link_alt not in linked_processes.keys():
+                links_to_drop.append(l)
+
+    print ("Links to drop: {}".format(links_to_drop))
 
     links = OrderedDict()
     for k, v in ip.links.items():

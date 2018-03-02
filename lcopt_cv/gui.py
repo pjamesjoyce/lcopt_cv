@@ -347,7 +347,7 @@ class ImageGui:
                        boxDilationIterations=self.boxDilationIterations) 
             
             if self.unstack:
-                unstack_pipeline(ip)
+                unstack_pipeline(ip, maskThickness = self.maskThickness)
 
             if self.directional:
                 directional_links_pipeline(ip)
