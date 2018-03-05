@@ -58,7 +58,7 @@ DEFAULT_CONTROLS = [
              'label': 'Size threshold',
              'display': True,
              'data': {
-                'value': 0.2,
+                'value': 0.1,
                 'min': 0,
                 'max': 1,
                 'step': 0.01
@@ -532,7 +532,9 @@ class LcaWizard(Frame):
 
             for k,v in self.steps[0].data.items():
                 self.ip.nodes[k]['name'] = v['nameVar'].get()
-                this_type = v['typeVar'].get()
+                chosen_type = v['typeVar'].get()
+                this_type = self.steps[0].type_dict[chosen_type]
+
                 self.ip.nodes[k]['type'] = this_type
 
                 if this_type in ['input', 'biosphere']:
@@ -588,7 +590,11 @@ class NodeStep(Frame):
         inputs = [n for n in ip.nodes.keys() if n in senders and n not in receivers]
         intermediates = [n for n in ip.nodes.keys() if n not in inputs]
 
+        intermediate_type = 'Unit/transformation process'
         types = ['input', 'intermediate', 'biosphere']
+        display_types = ['Input from technosphere', intermediate_type, 'Emission to biosphere']
+        self.type_dict = dict(zip(display_types, types))
+        self.rev_type_dict = dict(zip(types, display_types))
 
         #Label(self, text="Hello - from NodeStep").grid(column=0, row=0)
 
@@ -599,23 +605,25 @@ class NodeStep(Frame):
         #self.grid_columnconfigure(0, minsize=785, weight=1)
 
         img_size = 150
-        scroll_pixels = 20
-        panel_pixels = 30
+        scroll_pixels = 25
+        panel_pixels = 40
 
         scrollsize = img_size * len(ip.nodes)
 
         yscrollbar = Scrollbar(self)
         yscrollbar.grid(row=0, column=1, sticky=N+S) # pack(side="right", fill="y") 
 
-        canvas = Canvas(self, bd=0, yscrollcommand=yscrollbar.set, scrollregion=(0, 0, w, scrollsize))
-        canvas.config(width=w-scroll_pixels, height = h-panel_pixels)
+        self.canvas = Canvas(self, bd=0, yscrollcommand=yscrollbar.set, scrollregion=(0, 0, w, scrollsize))
+        self.canvas.config(width=w-scroll_pixels, height = h-panel_pixels)
 
-        scroll_frame = Frame(canvas)
+        scroll_frame = Frame(self.canvas)
 
-        canvas.grid(row=0, column=0, sticky=N+S+E+W)
+        self.canvas.grid(row=0, column=0, sticky=N+S+E+W)
         #canvas.pack(side="left", fill="both", expand=True)
 
-        yscrollbar.config(command=canvas.yview)
+        yscrollbar.config(command=self.canvas.yview)
+
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
         #img_size = 150
         
@@ -625,8 +633,8 @@ class NodeStep(Frame):
             associated_links = [l for l, v in ip.links.items() if v['link'][0] == k or v['link'][1] == k]
 
             this_frame = Frame(scroll_frame, width=800, height=img_size)
-            image_frame = Frame(this_frame, width=200, height=img_size, relief="groove")
-            control_frame = Frame(this_frame, width=600, height=img_size, relief="groove")
+            image_frame = Frame(this_frame, width=200, height=img_size)
+            control_frame = Frame(this_frame, width=600, height=img_size)
 
             box_image = convert_to_tkinter_image(ip.box_images[n], img_size)
 
@@ -654,7 +662,7 @@ class NodeStep(Frame):
             self.data[n]['nameVar'] = StringVar()
             #self.data[n]['nameVar'].trace("w", lambda name, index, mode, sv=self.data[n]['nameVar']: self.updateData(n, sv))
             self.data[n]['nameVar'].set("Box {}".format(n+1))
-            self.data[n]['nameEntry'] = Entry(control_frame, textvariable=self.data[n]['nameVar'])
+            self.data[n]['nameEntry'] = Entry(control_frame, textvariable=self.data[n]['nameVar'], width=30)
             self.data[n]['nameEntry'].grid(column=1, row=0)
 
             Label(control_frame, text="Type:").grid(column=0, row=1)
@@ -662,14 +670,16 @@ class NodeStep(Frame):
             
             if n in inputs:
                 this_type = 'input'
+                chosen_type = self.rev_type_dict[this_type]
             else:
                 this_type = 'intermediate'
+                chosen_type = self.rev_type_dict[this_type]
 
-            self.data[n]['typeVar'].set(this_type)
+            self.data[n]['typeVar'].set(chosen_type)
             if len(associated_links) > 1:
-                self.data[n]['typeDropDown'] = ttk.Combobox(control_frame, textvariable=self.data[n]['typeVar'], values=['intermediate'])  # OptionMenu(control_frame, self.data[n]['typeVar'], 'intermediate')#, state=DISABLED) 
+                self.data[n]['typeDropDown'] = ttk.Combobox(control_frame, textvariable=self.data[n]['typeVar'], values=[intermediate_type], width=27)  # OptionMenu(control_frame, self.data[n]['typeVar'], 'intermediate')#, state=DISABLED) 
             else:
-                self.data[n]['typeDropDown'] = ttk.Combobox(control_frame, textvariable=self.data[n]['typeVar'], values=types)  #OptionMenu(control_frame, self.data[n]['typeVar'], *(types), command=partial(self.changeType, n)) 
+                self.data[n]['typeDropDown'] = ttk.Combobox(control_frame, textvariable=self.data[n]['typeVar'], values=display_types, width=27)  #OptionMenu(control_frame, self.data[n]['typeVar'], *(types), command=partial(self.changeType, n)) 
                 self.data[n]['typeDropDown'].bind("<<ComboboxSelected>>", partial(self.changeType, n))
                 #self.data[n]['typeDropDown'].config(command=partial(self.changeType, n))
             self.data[n]['typeDropDown'].grid(column=1, row=1)
@@ -697,7 +707,7 @@ class NodeStep(Frame):
         for n, f in enumerate(self.node_frames):
             f.grid(column=0, row=n)
         
-        canvas.create_window((0,0), window=scroll_frame, anchor=N+W)
+        self.canvas.create_window((0,0), window=scroll_frame, anchor=N+W)
         #canvas.config(scrollregion=canvas.bbox(ALL))
 
     def changeType(self, *args):
@@ -705,7 +715,8 @@ class NodeStep(Frame):
         this_id = args[0]
         #this_type = args[1]
         #print(this_id, this_type)
-        this_type = self.data[this_id]['typeVar'].get()
+        chosen_type = self.data[this_id]['typeVar'].get()
+        this_type = self.type_dict[chosen_type]
         print(this_id, this_type)
         if this_type in ['input', 'biosphere']:
             self.data[this_id]['extLinkbtn'].config(state=NORMAL)
@@ -715,7 +726,8 @@ class NodeStep(Frame):
 
 
     def searchExternal(self, this_id):
-        this_type = self.data[this_id]['typeVar'].get()
+        chosen_type = self.data[this_id]['typeVar'].get()
+        this_type = self.type_dict[chosen_type]
         
         ext_databases = [x['name'] for x in self.ip.model.external_databases]
 
@@ -730,6 +742,9 @@ class NodeStep(Frame):
         searcher = DataSearcher(self, self.ip.model, to_search, this_type, self.data[this_id]['extLinkVar'], self.data[this_id]['extLinkCodeVar'], self.data[this_id]['extLinkDBVar'])
 
         searcher.show()
+
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
 
 class LinkStep(Frame):
@@ -747,8 +762,8 @@ class LinkStep(Frame):
         self.w = w
         self.h = h
 
-        scroll_pixels = 20
-        panel_pixels = 30
+        scroll_pixels = 25
+        panel_pixels = 40
 
         scrollsize = 800
 
@@ -917,8 +932,8 @@ class DataSearcher(Toplevel):
         self.parent = parent
         self.to_search = to_search
         self.this_type = this_type
-        self.w = 400
-        self.h = 400
+        self.w = 850
+        self.h = 500
         self.title('Search for external data in {} database'.format(to_search[0]))
         self.geometry("%dx%d%+d%+d" % (self.w, self.h, 50, 50))
 
@@ -928,7 +943,7 @@ class DataSearcher(Toplevel):
 
 
     def show(self):
-        Label(self, text="Look for something").pack()
+        Label(self, text="Search {} database".format(self.to_search[0])).grid(column=0, row=0, columnspan=4)
         
         location_path = os.path.join(assets, 'locations.json')
 
@@ -944,26 +959,35 @@ class DataSearcher(Toplevel):
         self.location_list = {"[{}] {}".format(x['code'], x['name']): x['code'] for x in filtered_locations}
 
         searchTerm = StringVar()
-        enter = Entry(self, textvariable=searchTerm)
-        enter.pack()
+        enter = Entry(self, textvariable=searchTerm, width=85)
+        enter.grid(column=0, row=1, columnspan=4)
 
         marketsOnly = BooleanVar()
         locationVar = StringVar()
         if self.this_type == 'input':
             
             marketsCheck = Checkbutton(self, text="Markets only?", variable=marketsOnly)
-            marketsCheck.pack()
+            marketsCheck.grid(column=0, row=2, columnspan=1, sticky=E+W, padx=5)
+
+            locationLabel = Label(self, text="Location").grid(column=1, row=2, columnspan=1, sticky=E+W, padx=5)
             
             locationList = ttk.Combobox(self, textvariable=locationVar, values=list(self.location_list.keys()))
-            locationList.pack()
+            locationList.grid(column=2, row=2, columnspan=1, sticky=E+W, padx=5)
 
         btn = Button(self, text='Search', command=partial(self.search, searchTerm, marketsOnly, locationVar))
-        btn.pack()
-        self.result_box = Listbox(self, width=self.w-20)
-        self.result_box.pack()
+        btn.grid(column=3, row=2, columnspan=1, sticky=E+W, padx=5)
+        result_frame = Frame(self)
+        result_scroll = Scrollbar(result_frame, orient=VERTICAL)
+        self.result_box = Listbox(result_frame, width=100, yscrollcommand=result_scroll.set, height=17)
+        result_scroll.config(command=self.result_box.yview)
+        result_scroll.pack(side=RIGHT, fill=Y)
+        self.result_box.pack(side=LEFT, fill=BOTH, expand=1)
+        result_frame.grid(column=0, row=3, columnspan=4, padx=10)
 
         OKbtn = Button(self, text='OK', command=partial(self.choose))
-        OKbtn.pack()
+        OKbtn.grid(column=3, row=4, columnspan=1, sticky=E+W)
+
+        self.bind('<Return>', partial(self.search, searchTerm, marketsOnly, locationVar))
 
         self.focus_set()
         self.grab_set()
@@ -975,8 +999,8 @@ class DataSearcher(Toplevel):
         searchTerm = args[0].get()
         marketsOnly = args[1].get()
         location = args[2].get()
-        print(searchTerm, marketsOnly, location)
-        print (self.to_search)
+        #print(searchTerm, marketsOnly, location)
+        #print (self.to_search)
         
         if location == "":
             location = None
@@ -998,14 +1022,14 @@ class DataSearcher(Toplevel):
 
             for k, v in result.items():
 
-                print(k, v.keys())
+                #print(k, v.keys())
 
                 if v['type'] == 'emission':
                     full_link_string = '{} (emission to {}) [{}]'.format(v['name'], ", ".join(v['categories']), v['unit'])
-                    print(full_link_string)  
+                    #print(full_link_string)  
                 else:
                     full_link_string = '{} ({}) [{}]'.format(v['name'], ", ".join(v['categories']), v['unit'])
-                    print(full_link_string) 
+                    #print(full_link_string) 
 
                 self.result_as_dict[full_link_string] = (v['database'], v['code'])
 
@@ -1013,7 +1037,7 @@ class DataSearcher(Toplevel):
         self.result_box.delete(0, END)
 
         for r in self.result_as_dict.keys():
-            print(r)
+            #print(r)
             self.result_box.insert(END, r)
 
     def choose(self, *args):

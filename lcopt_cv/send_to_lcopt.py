@@ -43,7 +43,10 @@ class LcoptWriter:
             for l in things_to_link:
                 if l in inputs or l in biosphere:
                     print(ip.nodes[l]['ext_link'])
-                    this_exchange = {'name': ip.nodes[l]['name'], 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': ip.nodes[l]['type'], 'ext_link': ip.nodes[l]['ext_link']}
+                    if ip.nodes[l]['ext_link'] == ('', ''):
+                        this_exchange = {'name': ip.nodes[l]['name'], 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': ip.nodes[l]['type']}
+                    else:
+                        this_exchange = {'name': ip.nodes[l]['name'], 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': ip.nodes[l]['type'], 'ext_link': ip.nodes[l]['ext_link']}
                     my_exchanges.append(this_exchange)
                 else:
                     this_exchange = {'name': "Output of {}".format(ip.nodes[l]['name']), 'type': 'technosphere', 'unit': 'kg', 'lcopt_type': ip.nodes[l]['type']}

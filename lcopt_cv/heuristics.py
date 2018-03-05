@@ -55,7 +55,6 @@ def get_stacks(node_dict, links):
     for key, group in itertools.groupby(sorted_node_dict2, key=lambda x: round_down(x['cy'], 20)):
         c = int(key)
         g = list(group)
-        print([x['index'] for x in g])
         
         left_sorted_node_dict = sorted(g, key=itemgetter('x1'))
         l = left_sorted_node_dict[0]['x1']
@@ -75,8 +74,6 @@ def get_stacks(node_dict, links):
         #print("Links in this stack {}\n".format(links_in_stack))
         if len(list(g)) > 1:
             stacks.append({'l': l, 'r': r, 't': t, 'b': b, 'data': g, 'nodes': nodes_in_stack, 'links': links_in_stack})
-
-    print ("{}".format([stack['nodes'] for stack in stacks]))
 
     return stacks
 
@@ -121,7 +118,7 @@ def unstack(ip, stacks, maskThickness = 8):
 
             if test_mask[centroids[1][1], centroids[1][0]] == 127:
 
-                print("{} are linked".format(i))
+                #print("{} are linked".format(i))
 
                 linked_processes[i] = centroids
         
@@ -132,7 +129,7 @@ def unstack(ip, stacks, maskThickness = 8):
             if s_link not in linked_processes.keys() and s_link_alt not in linked_processes.keys():
                 links_to_drop.append(l)
 
-    print ("Links to drop: {}".format(links_to_drop))
+    #print ("Links to drop: {}".format(links_to_drop))
 
     links = OrderedDict()
     for k, v in ip.links.items():
