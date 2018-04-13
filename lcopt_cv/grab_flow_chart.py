@@ -6,25 +6,16 @@ from math import *
 import imutils
 from collections import OrderedDict
 
-from .heuristics import round_down
-
-
 def euclidean_distance(x, y):
 
     return sqrt(sum(pow(a - b, 2) for a, b in zip(x, y)))
 
-def draw_snapped_link(image, box1, box2, roundTolerance=50):
+def draw_snapped_link(image, box1, box2, roundTolerance=50, draw=True):
     
     (x1, y1, w1, h1) = box1
     (x2, y2, w2, h2) = box2
     c1 = (int(x1+w1/2), int(y1+h1/2))
     c2 = (int(x2+w2/2), int(y2+h2/2))
-    
-    rx1 = round_down(c1[0], roundTolerance)
-    rx2 = round_down(c2[0], roundTolerance)
-    ry1 = round_down(c1[1], roundTolerance)
-    ry2 = round_down(c2[1], roundTolerance)
-    
     
     box1_snaps = {
                     "l":(x1, c1[1]),
@@ -43,9 +34,6 @@ def draw_snapped_link(image, box1, box2, roundTolerance=50):
     
     snaps=[box1_snaps, box2_snaps]
     
-    x_distance = rx1 - rx2
-    y_distance = ry1 - ry2
-
     position_info = [0, 0]  # horizontal, vertical
 
     if x2 + w2 < x1:
@@ -95,7 +83,8 @@ def draw_snapped_link(image, box1, box2, roundTolerance=50):
     lp1 = snaps[0][_from]
     lp2 = snaps[1][_to]
     
-    cv2.arrowedLine(image, lp1, lp2, (0,0,255), thickness=2)
+    if draw:
+        cv2.arrowedLine(image, lp1, lp2, (0,0,255), thickness=2)
 
     return lp1, lp2, orientation
     
@@ -111,7 +100,7 @@ class ImageProcessor():
         self.model = None
         self.process()
 
-    def process(self, threshLevel=115, boxApproxParameter=0.02, sizeThreshold=0.2, boxDilationIterations=1, lineDilateIterations = 3, equalizeBackground=True, skipDilation = False, skipClosing=False, maskThickness=8, duplicateThreshold=10):
+    def process(self, threshLevel=115, boxApproxParameter=0.02, sizeThreshold=0.2, boxDilationIterations=1, lineDilateIterations = 3, equalizeBackground=True, skipDilation = False, skipClosing=False, maskThickness=8, duplicateThreshold=10, closingIterations=1):
 
         self.intermediates = OrderedDict()
 
@@ -159,7 +148,7 @@ class ImageProcessor():
             closed = dilated.copy()
         else:
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-            closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel)
+            closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel, iterations=closingIterations)
 
         self.intermediates['closed'] = closed
 
@@ -194,7 +183,7 @@ class ImageProcessor():
             if euclidean_distance(bounding_boxes[c[0]], bounding_boxes[c[1]]) < ed_thresh:
                 duplicate_boxes.append(c[1])
 
-        non_duplicate_boxes = [x for n, x in enumerate(bounding_boxes) if n not in duplicate_boxes]
+        non_duplicate_boxes = [x for n, x in enumerate(reversed(bounding_boxes)) if n not in duplicate_boxes]
 
         for n, b in enumerate(non_duplicate_boxes):
             (x, y, w, h) = b

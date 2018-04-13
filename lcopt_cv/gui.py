@@ -25,7 +25,7 @@ DEFAULT_CONTROLS = [
              'label': 'Threshold level',
              'display': True,
              'data': {
-                'value': 115,
+                'value': 130,
                 'min': 0,
                 'max': 255,
                 'step': 1
@@ -34,6 +34,17 @@ DEFAULT_CONTROLS = [
             {'name': 'boxDilationIterations',
              'type': 'scale',
              'label': 'Number of box dilation iterations',
+             'display': True,
+             'data': {
+                'value': 0,
+                'min': 0,
+                'max': 10,
+                'step': 1
+             }
+            },
+            {'name': 'closingIterations',
+             'type': 'scale',
+             'label': 'Number of box closing iterations',
              'display': True,
              'data': {
                 'value': 1,
@@ -91,7 +102,7 @@ DEFAULT_CONTROLS = [
              'label': 'line thickness for box mask',
              'display': True,
              'data': {
-                'value': 8,
+                'value': 12,
                 'min': 0,
                 'max': 20,
                 'step': 1
@@ -108,7 +119,7 @@ DEFAULT_CONTROLS = [
             {'name': 'skipClosing',
              'type': 'checkbox',
              'label': 'Skip closing step (for incomplete boxes)',
-             'display': True,
+             'display': False,
              'data': {
                 'value': False,
              }
@@ -344,7 +355,8 @@ class ImageGui:
                        maskThickness=self.maskThickness,
                        skipDilation=self.skipDilation,
                        duplicateThreshold=self.duplicateThreshold,
-                       boxDilationIterations=self.boxDilationIterations) 
+                       boxDilationIterations=self.boxDilationIterations,
+                       closingIterations=self.closingIterations) 
             
             if self.unstack:
                 unstack_pipeline(ip, maskThickness = self.maskThickness)
@@ -863,6 +875,8 @@ class LinkStep(Frame):
 
         img_w, img_h = self.ip.image.shape[:2]
 
+        #TODO: change this to snapped version
+
         link_image = np.full((img_w, img_h, 3), 255, dtype=np.uint8)
         
         for n, (k, node) in enumerate(self.ip.nodes.items()):
@@ -874,24 +888,30 @@ class LinkStep(Frame):
         for n, (k, link) in enumerate(self.ip.links.items()):
 
             link_type = self.ip.nodes[link['link'][0]]['type']
-            c = link['centroids']
+            #c = link['centroids']
 
             if link_type != 'biosphere':
+
+                n1 = self.ip.nodes[link['link'][0]]['coords']
+                n2 = self.ip.nodes[link['link'][1]]['coords']
                 
-                x1 = c[0][0]  
-                y1 = c[0][1]  
-                x2 = c[1][0]  
-                y2 = c[1][1]  
+                #x1 = c[0][0]  
+                #y1 = c[0][1]  
+                #x2 = c[1][0]  
+                #y2 = c[1][1]  
 
             else:
 
-                x2 = c[0][0]  
-                y2 = c[0][1]  
-                x1 = c[1][0]  
-                y1 = c[1][1]  
+                n1 = self.ip.nodes[link['link'][1]]['coords']
+                n2 = self.ip.nodes[link['link'][0]]['coords']
+                #x2 = c[0][0]  
+                #y2 = c[0][1]  
+                #x1 = c[1][0]  
+                #y1 = c[1][1]  
 
-            
-            cv2.arrowedLine(link_image, (x1, y1), (x2, y2), type_line_colors[link_type], thickness=2)
+            _start, _end, orientation = draw_snapped_link(link_image, n1, n2, draw=False)
+            #cv2.arrowedLine(link_image, (x1, y1), (x2, y2), type_line_colors[link_type], thickness=2)
+            cv2.arrowedLine(link_image, _start, _end, type_line_colors[link_type], thickness=2)
 
 
         link_image_tk = convert_to_tkinter_image(link_image, self.img_size)
