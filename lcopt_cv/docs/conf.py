@@ -19,12 +19,21 @@
 
 # -- Project information -----------------------------------------------------
 
+import os
+import sys
+import sphinx_rtd_theme
+
+sys.path.insert(0, os.path.abspath('..'))
+print(sys.path)
+print(os.path.abspath('..'))
+
+
 project = u'lcopt-cv'
 copyright = u'2018, P. James Joyce'
 author = u'P. James Joyce'
 
 # The short X.Y version
-version = u''
+version = u'0.1.0'
 # The full version, including alpha/beta/rc tags
 release = u'0.1.0'
 
@@ -81,6 +90,8 @@ pygments_style = 'sphinx'
 # a list of builtin themes.
 #
 #html_theme = 'alabaster'
+html_theme = "sphinx_rtd_theme"
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

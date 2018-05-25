@@ -1,0 +1,113 @@
+{% set name = "lcopt-cv" %}
+{% set version = "0.1.3" %}
+{% set hash_type = "sha256" %}
+{% set hash_value = "19798e05916f74a6d0dc3a2d593583be81d09a6a372a5aa93cd49ac8ac872739" %}
+
+package:
+  name: '{{ name|lower }}'
+  version: '{{ version }}'
+
+source:
+  fn: '{{ name }}-{{ version }}.tar.gz'
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  '{{ hash_type }}': '{{ hash_value }}'
+
+build:
+  noarch: python
+  number: 0
+  script: python setup.py install  --single-version-externally-managed --record=record.txt
+  entry_points:
+    - lcopt-cv = lcopt_cv.bin.lcopt_cv_gui:main
+    - lcopt-cv-q = lcopt_cv.bin.lcopt_cv_gui_q:main
+
+requirements:
+  build:
+    - appdirs
+    - asteval
+    - brightway2
+    - bw2analyzer >=0.9.4
+    - bw2calc
+    - bw2data
+    - bw2io >=0.5.10
+    - bw2parameters
+    - docopt
+    - eight
+    - flask
+    - future
+    - jupyter
+    - lxml
+    - lcopt
+    - numpy
+    - opencv
+    - pandas
+    - peewee >=2.8
+    - psutil
+    - pypardiso
+    - pyprind
+    - python
+    - pywin32   # [win]
+    - requests
+    - scipy
+    - setuptools
+    - stats_arrays
+    - unicodecsv
+    - voluptuous
+    - werkzeug
+    - whoosh
+    - xlrd
+    - xlsxwriter
+  run:
+    - appdirs
+    - asteval
+    - brightway2
+    - bw2analyzer
+    - bw2calc
+    - bw2data
+    - bw2io >=0.5.10
+    - bw2parameters
+    - docopt
+    - eight
+    - flask
+    - future
+    - jupyter
+    - lxml
+    - lcopt
+    - numpy
+    - opencv
+    - pandas
+    - peewee >=2.8
+    - psutil
+    - pypardiso
+    - pyprind
+    - python
+    - requests
+    - scipy
+    - stats_arrays
+    - unicodecsv
+    - voluptuous
+    - werkzeug
+    - whoosh
+    - xlrd
+    - xlsxwriter
+
+#test:
+#  imports:
+#    - {{ name }}
+
+about:
+  home: https://github.com/pjamesjoyce/lcopt_cv/
+  license: BSD 3-Clause
+  license_family: BSD
+  license_file: LICENSE.txt
+  summary: 'Computer vision module that links to lcopt'
+  description: '# lcopt-cv
+Computer vision module that links to lcopt
+
+# Installation
+
+`lcopt-cv` requires the `brightway2` and `lcopt` packages to be installed
+
+
+    Online documentation, including full installation instructions, is available [here](http://lcopt-cv.readthedocs.io)'
+  doc_url: 'http://lcopt-cv.readthedocs.io/en/latest/index.html'
+  dev_url: 'https://github.com/pjamesjoyce/lcopt_cv'

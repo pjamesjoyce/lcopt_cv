@@ -6,7 +6,7 @@ from setuptools import setup
 import os
 
 pkg_name = 'lcopt_cv'
-pkg_version = '0.1.0'
+pkg_version = '0.1.3'
 
 packages = []
 root_dir = os.path.dirname(__file__)
@@ -35,7 +35,7 @@ my_package_files.extend(package_files(os.path.join(pkg_name, 'assets')))
 #my_package_files.extend(package_files(os.path.join('lcopt', 'static')))
 #my_package_files.extend(package_files(os.path.join('lcopt', 'templates')))
 my_package_files.extend(package_files(os.path.join(pkg_name, 'bin')))
-#print(my_package_files)
+print(my_package_files)
 
 setup(
     name=pkg_name,
@@ -51,8 +51,14 @@ setup(
             'lcopt-cv-q = lcopt_cv.bin.lcopt_cv_gui_q:main',
         ]
     },
-    #install_requires=[
-    #],
+    install_requires=[
+        'opencv-python',
+        'imutils',
+        'pillow',
+        'brightway2',
+        'pandas',
+        'lcopt'
+    ],
     include_package_data=True, 
     url="https://github.com/pjamesjoyce/{}/".format(pkg_name),
     download_url="https://github.com/pjamesjoyce/{}/archive/{}.tar.gz".format(pkg_name, pkg_version),
