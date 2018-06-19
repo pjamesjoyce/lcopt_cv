@@ -18,7 +18,13 @@ What if you could just take a picture of the diagram you've just drawn and have 
 
 Well now you can - introducing lcopt-cv, computer vision for LCA.
 
-.. image:: assets/lcopt_cv_workflow.jpg
+.. raw:: html
+
+	<video height="480" poster="_static/simple_snap.jpg" controls>
+	<source src="_static/lcopt_cv.mp4" type="video/mp4">
+	</video>
+
+.. ".. image:: assets/lcopt_cv_workflow.jpg"
 
 
 Features
